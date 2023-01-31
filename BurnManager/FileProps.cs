@@ -1,4 +1,7 @@
-﻿namespace BurnManager
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace BurnManager
 {
     //Represents a single file
     public class FileProps
@@ -8,11 +11,18 @@
         public ulong? SizeInBytes { get; set; }
         public DateTime? LastModified { get; set; } //The last-modified time of this file, from the file system
         public List<DiscAndBurnStatus> RelatedVolumes { get; set; } = new List<DiscAndBurnStatus>(); //Volumes which this file is or may be burned to
-        public Byte[]? Checksum { get; set; }
+        public byte[]? Checksum { get; set; }
         public HashType? HashAlgUsed { get; set; }
         public DateTime? TimeAdded { get; set; } //The date & time this instance was created
         public FileStatus? Status { get; set; }
-        public MonolithicCollection Monolithic { get; } = new MonolithicCollection();
+        private MonolithicCollection _monolithic { get; set; } = new MonolithicCollection();
+        public MonolithicCollection Monolithic
+        {
+            get
+            {
+                return _monolithic;
+            }
+        }
 
         public readonly object LockObj = new object();
 
@@ -37,8 +47,27 @@
                     HashAlgUsed = copySource.HashAlgUsed;
                     TimeAdded = copySource.TimeAdded;
                     Status = copySource.Status;
-                    Monolithic = new MonolithicCollection(copySource.Monolithic);
+                    _monolithic = new MonolithicCollection(copySource.Monolithic);
                 }
+            }
+        }
+
+        [JsonConstructor]
+        public FileProps(string FileName, string OriginalPath, ulong SizeInBytes, DateTime LastModified,
+            List<DiscAndBurnStatus> RelatedVolumes, byte[] Checksum, HashType HashAlgUsed, DateTime TimeAdded,
+            FileStatus Status, MonolithicCollection Monolithic)
+        {
+            lock (LockObj) { 
+                this.FileName = FileName;
+                this.OriginalPath = OriginalPath;
+                this.SizeInBytes = SizeInBytes;
+                this.LastModified = LastModified;
+                this.RelatedVolumes = RelatedVolumes;
+                this.Checksum = Checksum;
+                this.HashAlgUsed = HashAlgUsed;
+                this.TimeAdded = TimeAdded;
+                this.Status = Status;
+                this._monolithic = Monolithic;
             }
         }
 

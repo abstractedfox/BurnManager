@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Text.Json.Serialization;
 
 namespace BurnManager
 {
@@ -39,6 +40,16 @@ namespace BurnManager
                     }
                     _totalSizeInBytes = copySource.TotalSizeInBytes;
                 }
+            }
+        }
+
+        [JsonConstructor]
+        public FileList(HashSet<FileProps> Files, ulong TotalSizeInBytes)
+        {
+            lock (LockObj)
+            {
+                this._files = Files;
+                this._totalSizeInBytes = TotalSizeInBytes;
             }
         }
 

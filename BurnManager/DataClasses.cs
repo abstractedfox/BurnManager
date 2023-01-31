@@ -3,6 +3,9 @@
 //using System.Reflection.Metadata.Ecma335;
 //using System.Security.Cryptography.X509Certificates;
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace BurnManager
 {
     public enum HashType
@@ -17,6 +20,15 @@ namespace BurnManager
         GOOD,
         CHECKSUM_ERROR,
         FILE_MISSING
+    }
+
+    public enum ResultCode
+    {
+        none,
+        SUCCESSFUL,
+        UNSUCCESSFUL,
+        NULL_VALUE,
+        INVALID_JSON
     }
 
     //Used to identify files which are meant to be kept together when algorithmically sorting.
@@ -76,13 +88,31 @@ namespace BurnManager
     //Top level struct, this is what contains all the files and volumes we're tracking and what will get passed to the serializer
     public class FileAndDiscData
     {
-        public FileList AllFiles { get; } = new FileList();
-        public List<VolumeProps> AllVolumes { get; } = new List<VolumeProps>();
+        private FileList _allFiles { get; set; } = new FileList();
+        public FileList AllFiles { get
+            {
+                return _allFiles;
+            }
+        }
+
+        private List<VolumeProps> _allVolumes = new List<VolumeProps>();
+        public List<VolumeProps> AllVolumes { get
+            {
+                return _allVolumes;
+            }
+        }
         public int FormatVersion { get; } = 1;
         public readonly object LockObj = new object();
 
         public FileAndDiscData()
         {
+        }
+
+        [JsonConstructor]
+        public FileAndDiscData(FileList AllFiles, List<VolumeProps> AllVolumes)
+        {
+            _allFiles = AllFiles;
+            _allVolumes = AllVolumes;
         }
 
         public FileAndDiscData(FileAndDiscData copySource)

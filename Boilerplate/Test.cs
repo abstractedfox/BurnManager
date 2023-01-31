@@ -1,6 +1,7 @@
 ﻿//Boilerplate main for testing purposes.
 
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace BurnManager
@@ -11,8 +12,33 @@ namespace BurnManager
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, World!");
-            TestDataTypes();
+            //TestDataTypes();
+            TestAPI();
             while (true) ; //prevent returning from main when awaited calls cause flow control to continue here
+        }
+
+        static async void TestAPI()
+        {
+            BurnManagerAPI testData = new BurnManagerAPI();
+            await testData.TestState();
+
+            FileAndDiscData compare = new FileAndDiscData(testData.data);
+
+            if (compare == testData.data)
+            {
+                Pass("Comparison of copied FileAndDiscData to original FileAndDiscData.");
+            }
+            else Fail("Comparison of copied FileAndDiscData to original FileAndDiscData.");
+
+            string jsonString = testData.Serialize();
+            ResultCode result = 0;
+            FileAndDiscData deserialized = BurnManagerAPI.JsonToFileAndDiscData(jsonString, ref result);
+
+            if (deserialized == testData.data && result == ResultCode.SUCCESSFUL)
+            {
+                Pass("Deserialize & reserialize");
+            }
+            else Fail("Deserialize & reserialize");
         }
 
         static async void TestDataTypes()

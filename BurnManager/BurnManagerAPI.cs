@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BurnManager
 {
@@ -11,6 +13,7 @@ namespace BurnManager
     {
         public FileAndDiscData data;
         public FileAndDiscData lastSavedState;
+        public object LockObj = new object();
 
         public BurnManagerAPI()
         {
@@ -18,13 +21,63 @@ namespace BurnManager
             lastSavedState = data;
         }
 
-        public void Serialize()
+        public string Serialize()
         {
-
+            string jsonString = JsonSerializer.Serialize(data);
+            return jsonString;
         }
-        public void Deserialize()
+        //Loads a Json-serialized FileAndDiscData into this instance's 'data' and 'lastSavedState'
+        //Only handles loading; does not check whether the saved state has been altered first
+        public ResultCode LoadFromJson(string serializedJson)
         {
+            ResultCode operationResult = 0;
+            FileAndDiscData newData = JsonToFileAndDiscData(serializedJson, ref operationResult);
+            if (operationResult == ResultCode.SUCCESSFUL)
+            {
+                lock (LockObj)
+                {
+                    data = newData;
+                    lastSavedState = data;
+                }
+                return ResultCode.SUCCESSFUL;
+            }
+            else return operationResult;
+        }
 
+        //Returns a new FileAndDiscData from a JSON string. Passed ResultCode in arg2 is used to return the result of the operation
+        public static FileAndDiscData JsonToFileAndDiscData(string serializedJson, ref ResultCode operationResultOut)
+        {
+            FileAndDiscData? newData;
+
+            if (serializedJson == null)
+            {
+                operationResultOut = ResultCode.NULL_VALUE;
+                return new FileAndDiscData();
+            }
+
+            try
+            {
+                newData = JsonSerializer.Deserialize<FileAndDiscData>(serializedJson);
+            }
+            catch (JsonException)
+            {
+                operationResultOut = ResultCode.INVALID_JSON;
+                return new FileAndDiscData();
+            }
+            catch (InvalidOperationException)
+            {
+                operationResultOut = ResultCode.INVALID_JSON;
+                return new FileAndDiscData();
+            }
+
+            if (newData == null)
+            {
+                operationResultOut = ResultCode.UNSUCCESSFUL;
+                return new FileAndDiscData();
+            }
+
+            operationResultOut = ResultCode.SUCCESSFUL;
+            return newData;
         }
 
 

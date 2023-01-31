@@ -1,4 +1,6 @@
 ﻿using System.Data;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BurnManager
 {
@@ -18,7 +20,7 @@ namespace BurnManager
         private string _identifier { get; set; } = "";
         private ulong _capacityInBytes { get; set; }
         private int _timesBurned { get; set; } = 0;
-        private FileList _files { get; } = new FileList();
+        public FileList _files { get; } = new FileList();
 
         public ulong CapacityInBytes { 
             get
@@ -92,6 +94,20 @@ namespace BurnManager
                         }
                     }
                 }
+            }
+        }
+
+        [JsonConstructor]
+        public VolumeProps(IdentifierDelegate GetIdentifier, ulong CapacityInBytes, 
+            string Identifier, int TimesBurned, FileList Files)
+        {
+            lock (LockObj)
+            {
+                this._getIdentifier = GetIdentifier;
+                this._capacityInBytes = CapacityInBytes;
+                this._identifier = Identifier;
+                this._timesBurned = TimesBurned;
+                this._files = Files;
             }
         }
 
