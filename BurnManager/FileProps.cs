@@ -53,9 +53,9 @@ namespace BurnManager
         }
 
         [JsonConstructor]
-        public FileProps(string FileName, string OriginalPath, ulong SizeInBytes, DateTime LastModified,
-            List<DiscAndBurnStatus> RelatedVolumes, byte[] Checksum, HashType HashAlgUsed, DateTime TimeAdded,
-            FileStatus Status, MonolithicCollection Monolithic)
+        public FileProps(string? FileName, string? OriginalPath, ulong? SizeInBytes, DateTime? LastModified,
+            List<DiscAndBurnStatus> RelatedVolumes, byte[]? Checksum, HashType? HashAlgUsed, DateTime? TimeAdded,
+            FileStatus? Status, MonolithicCollection Monolithic)
         {
             lock (LockObj) { 
                 this.FileName = FileName;
@@ -130,6 +130,73 @@ namespace BurnManager
             }*/
 
             return false;
+        }
+
+        public char[] Serialize(char spacer)
+        {
+            int numOfElements = 11;
+            int checksumLength = Checksum.Length;
+            int bufferSize = FileName.Length + OriginalPath.Length + (sizeof(ulong)/sizeof(char)) + LastModified.Value.ToString().Length +
+                (sizeof(int)/sizeof(char)) + checksumLength + (sizeof(HashType) / sizeof(char)) + TimeAdded.Value.ToString().Length + 
+                sizeof(FileStatus) + Monolithic.CollectionName.Length + sizeof(int) / sizeof(char) + (sizeof(char) * numOfElements);
+
+            Console.WriteLine("Buffer size: " + bufferSize);
+
+
+            //elements in order are: FileName, OriginalPath, SizeInBytes, LastModified, length of checksum, checksum, HashAlgUsed,
+            //TimeAdded,Status, Monolithic.CollectionName, Monolithic.CollectionID. Last value added is space for the 'spacer' character
+            //between each element
+
+            char[] serialized = new char[bufferSize];
+            int charCount = 0;
+
+            Action addSpacer = () =>
+            {
+                serialized[charCount] = spacer;
+                charCount++;
+            };
+
+            Action<string> addStringToBuffer = (input) =>
+            {
+                input.CopyTo(0, serialized, charCount, input.Length);
+                charCount += input.Length;
+                addSpacer();
+            };
+
+
+            addStringToBuffer(FileName);
+            addStringToBuffer(OriginalPath);
+
+            serialized[charCount] = (char)(SizeInBytes >> 32); //high
+            serialized[charCount + 1] = (char)(SizeInBytes & int.MaxValue); //low
+            charCount += 2;
+            addSpacer();
+
+            addStringToBuffer(LastModified.Value.ToString());
+
+            serialized[charCount] = (char)checksumLength;
+            charCount++;
+            addSpacer();
+            Array.Copy(Checksum, 0, serialized, charCount, checksumLength);
+            charCount += checksumLength;
+            addSpacer();
+
+            serialized[charCount] = (char)HashAlgUsed;
+            charCount++;
+            addSpacer();
+
+            addStringToBuffer(TimeAdded.Value.ToString());
+
+            serialized[charCount] = (char)Status;
+            charCount++;
+            addSpacer();
+
+            addStringToBuffer(Monolithic.CollectionName);
+
+            serialized[charCount] = (char)Monolithic.CollectionID;
+            addSpacer();
+
+            return serialized;
         }
     }
 }

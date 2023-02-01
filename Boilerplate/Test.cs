@@ -1,8 +1,8 @@
 ﻿//Boilerplate main for testing purposes.
 
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BurnManager
 {
@@ -13,8 +13,77 @@ namespace BurnManager
         {
             Console.WriteLine("Hello, World!");
             //TestDataTypes();
-            TestAPI();
+            //TestAPI();
+            TestChrisSerializer();
             while (true) ; //prevent returning from main when awaited calls cause flow control to continue here
+        }
+
+        static async void TestChrisSerializer()
+        {
+            FileProps testPropsA = new FileProps
+            {
+                Checksum = new byte[] { 1, 1, 1, 1 },
+                FileName = "testPropsA",
+                HashAlgUsed = HashType.MD5,
+                TimeAdded = DateTime.Now,
+                LastModified = DateTime.Now,
+                OriginalPath = "c:\\testPropsA",
+                SizeInBytes = 500,
+                Status = FileStatus.GOOD
+            };
+
+            char[] serializedFileProps = testPropsA.Serialize('@');
+
+            Console.WriteLine(serializedFileProps);
+        }
+
+        //Test that every data type serializes/deserializes correctly using the JSON serializer
+        static async void TestJSONSerializer()
+        {
+            FileProps testPropsA = new FileProps
+            {
+                Checksum = new byte[] { 1, 1, 1, 1 },
+                FileName = "testPropsA",
+                HashAlgUsed = HashType.MD5,
+                TimeAdded = DateTime.Now,
+                LastModified = DateTime.Now,
+                OriginalPath = "c:\\testPropsA",
+                SizeInBytes = 500,
+                Status = FileStatus.GOOD
+            };
+
+            string serialized = JsonSerializer.Serialize(testPropsA);
+            FileProps deserializedFileProps = JsonSerializer.Deserialize<FileProps>(serialized);
+            if (testPropsA == deserializedFileProps) Pass("FileProps serialization");
+            else Fail("FileProps serialization");
+
+            FileList testList = new FileList();
+            testList.Add(testPropsA);
+            serialized = JsonSerializer.Serialize(testList);
+            FileList deserializedList = JsonSerializer.Deserialize<FileList>(serialized);
+            if (deserializedList == testList) Pass("FileList serialization");
+            else
+            {
+                Fail("FileList serialization");
+                Console.WriteLine("testList contents:");
+                foreach (var file in testList) Console.WriteLine(JsonSerializer.Serialize(file));
+                Console.WriteLine("deserializedList contents:");
+                foreach (var file in deserializedList) Console.WriteLine(JsonSerializer.Serialize(file));
+            }
+
+            VolumeProps testVolProps = new VolumeProps(1000000);
+            serialized = JsonSerializer.Serialize(testVolProps);
+            VolumeProps deserializedVolProps = JsonSerializer.Deserialize<VolumeProps>(serialized);
+            if (testVolProps == deserializedVolProps) Pass("Empty VolumeProps deserialization");
+            else Fail("Empty VolumeProps deserialization");
+
+            await testVolProps.Add(deserializedFileProps);
+            await deserializedVolProps.Add(deserializedFileProps);
+            serialized = JsonSerializer.Serialize(deserializedVolProps);
+            deserializedVolProps = JsonSerializer.Deserialize<VolumeProps>(serialized);
+            if (testVolProps == deserializedVolProps) Pass("VolumeProps deserialization");
+            else Fail("VolumeProps deserialization");
+
         }
 
         static async void TestAPI()
@@ -215,6 +284,13 @@ namespace BurnManager
 
             if (testList != allData.AllFiles) Pass("FileList inequality");
             else Fail("FileList inequality");
+
+            FileList compareList = new FileList();
+            compareList.Add(testPropsA);
+            compareList.Add(testPropsB);
+
+            if (testList != compareList) Pass("FileList inequality 2 (equal length lists with different contents)");
+            else Fail("FileList inequality 2 (equal length lists with different contents)");
         }
 
         public static string DummyIDDelegate()

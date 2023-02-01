@@ -77,7 +77,7 @@ namespace BurnManager
                 }
             }
             //note: volumes should not be compared directly here, or every field will be compared, which will compare every
-            //FileProps, which will compare every DiscAndBurnStatus
+            //FileProps, which will compare every DiscAndBurnStatus, which will compare the volume
         }
         public static bool operator !=(DiscAndBurnStatus? a, DiscAndBurnStatus? b)
         {

@@ -20,7 +20,7 @@ namespace BurnManager
         private string _identifier { get; set; } = "";
         private ulong _capacityInBytes { get; set; }
         private int _timesBurned { get; set; } = 0;
-        public FileList _files { get; } = new FileList();
+        public FileList Files { get; } = new FileList();
 
         public ulong CapacityInBytes { 
             get
@@ -36,7 +36,7 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    return _capacityInBytes - _files.TotalSizeInBytes;
+                    return _capacityInBytes - Files.TotalSizeInBytes;
                 }
             }
         }
@@ -45,7 +45,7 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    return _files.TotalSizeInBytes;
+                    return Files.TotalSizeInBytes;
                 }
             }
         }
@@ -90,7 +90,7 @@ namespace BurnManager
                     {
                         lock (file.LockObj)
                         {
-                            _files.Add(file);
+                            Files.Add(file);
                         }
                     }
                 }
@@ -107,7 +107,7 @@ namespace BurnManager
                 this._capacityInBytes = CapacityInBytes;
                 this._identifier = Identifier;
                 this._timesBurned = TimesBurned;
-                this._files = Files;
+                this.Files = Files;
             }
         }
 
@@ -119,8 +119,8 @@ namespace BurnManager
                 {
                     lock (file.LockObj)
                     {
-                        if (_files.Contains(file)) return;
-                        _files.Add(file);
+                        if (Files.Contains(file)) return;
+                        Files.Add(file);
                         file.RelatedVolumes.Add(new DiscAndBurnStatus { IsBurned = false, Volume = this });
                     }
                 }
@@ -136,7 +136,7 @@ namespace BurnManager
                 {
                     lock (file.LockObj)
                     {
-                        if (_files.Remove(file))
+                        if (Files.Remove(file))
                         {
                             DiscAndBurnStatus? thisDisc = file.RelatedVolumes.Where(a => a.Volume == this).First();
                             if (thisDisc == null)
@@ -160,7 +160,7 @@ namespace BurnManager
                 {
                     lock (compare.LockObj)
                     {
-                        List<FileProps> results = _files.Where(a => a == compare).ToList();
+                        List<FileProps> results = Files.Where(a => a == compare).ToList();
                         if (results.Count > 0) result = true;
                     }
                 }
@@ -244,7 +244,7 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    return _files.GetEnumerator();
+                    return Files.GetEnumerator();
                 }
             }
         }

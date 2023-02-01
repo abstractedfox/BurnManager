@@ -31,6 +31,20 @@ namespace BurnManager
             return true;
         }
 
+        public static bool CompareFileLists(FileList a, FileList b)
+        {
+            int aCount = a.Count;
+            int bCount = b.Count;
+            if (aCount + bCount == 0) return true;
+            if (aCount != bCount) return false;
+
+            foreach (var item in a)
+            {
+                if (!b.Contains(item)) return false;
+            }
+            return true;
+        }
+
         public static bool CompareByteArrays(byte[] arrayA, byte[]arrayB)
         {
             if (arrayA.Length != arrayB.Length) return false;

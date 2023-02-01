@@ -6,9 +6,10 @@ namespace BurnManager
     //A collection of FileProps. All operations on the backing store are atomic.
     public class FileList : ICollection<FileProps>
     {
+        public readonly object LockObj = new object();
+
         //private List<FileProps> _files;
         private HashSet<FileProps> _files = new HashSet<FileProps>();
-        public readonly object LockObj = new object();
         private ulong _totalSizeInBytes;
         public ulong TotalSizeInBytes
         {
@@ -18,6 +19,15 @@ namespace BurnManager
                 {
                     return _totalSizeInBytes;
                 }
+            }
+        }
+
+        //yes, this is for the json serializer
+        public HashSet<FileProps> Files
+        {
+            get
+            {
+                return _files;
             }
         }
 
@@ -49,7 +59,7 @@ namespace BurnManager
             lock (LockObj)
             {
                 this._files = Files;
-                this._totalSizeInBytes = TotalSizeInBytes;
+                RecalculateTotalSize();
             }
         }
 
@@ -192,6 +202,18 @@ namespace BurnManager
             return false;
         }
 
+        //Recalculates the _totalSizeInBytes value. Necessary after deserialization
+        public void RecalculateTotalSize()
+        {
+            lock (LockObj)
+            {
+                foreach (var file in _files)
+                {
+                    if (file.SizeInBytes != null) _totalSizeInBytes += (ulong)file.SizeInBytes;
+                }
+            }
+        }
+
         IEnumerator IEnumerable.GetEnumerator()
         {
             lock (LockObj)
@@ -204,11 +226,39 @@ namespace BurnManager
         {
             if (a is null && !(b is null) || !(a is null) && b is null) return false;
             if (a is null && b is null) return true;
+            if (a.Count != b.Count) return false;
             lock (a.LockObj)
             {
                 lock (b.LockObj)
                 {
-                    return (Enumerable.SequenceEqual(a, b));
+                    //return (Enumerable.SequenceEqual(a, b));
+                    //return CollectionComparers.CompareFileLists(a, b);
+
+                    //Deep compare using FileProps' comparison operator is needed; comparing using ICollection.Contains
+                    //appears to only compare references which would cause inaccurate results if comparing two
+                    //different instances with identical contents
+                    FileList compareA = new FileList(a);
+                    FileList compareB = new FileList(b);
+                    while (compareA.Count > 0)
+                    {
+                        bool foundMatch = false;
+                        foreach (var fileA in compareA)
+                        {
+                            foreach (var fileB in compareB)
+                            {
+                                if (fileA == fileB)
+                                {
+                                    compareA.Remove(fileA);
+                                    compareB.Remove(fileB);
+                                    foundMatch = true;
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                        if (!foundMatch) return false;
+                    }
+                    return true;
                 }
             }
         }
