@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Net.WebSockets;
 using System.Text.Json.Serialization;
 
 namespace BurnManager
@@ -92,7 +93,7 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    results = (List<FileProps>)_files.Where(file => FileProps.PartialEquals(file, compareTo));
+                    results = (List<FileProps>)_files.Where(file => FileProps.PartialEquals(file, compareTo)).ToList();
                 }
             });
             return results;
@@ -179,27 +180,29 @@ namespace BurnManager
             return false;
         }
 
-        //If removeFromVolumes == true, this file will also be removed from any volumes in its RelatedVolumes struct
-        public bool Remove(FileProps item, bool removeFromVolumes)
+        //The passed collection of VolumeProps will be searched for references to the removed file, removing it from those volumes as well
+        public async Task<bool> Remove(FileProps item, ICollection<VolumeProps> relatedVolumes)
         {
-            lock (LockObj)
+            bool operationResult = false;
+            await Task.Run(() =>
             {
-                lock (item.LockObj)
+                lock (LockObj)
                 {
-                    if (_files.Remove(item))
+                    lock (item.LockObj)
                     {
-                        if (removeFromVolumes)
+                        if (_files.Remove(item))
                         {
                             foreach (var relationship in item.RelatedVolumes)
                             {
-                                relationship.Volume.Remove(item);
+                                VolumeProps volume = VolumeProps.GetVolumePropsByID(relatedVolumes, relationship.VolumeID).First();
+                                volume.Remove(item);
                             }
+                            operationResult = true;
                         }
-                        return true;
                     }
                 }
-            }
-            return false;
+            });
+            return operationResult;
         }
 
         //Recalculates the _totalSizeInBytes value. Necessary after deserialization

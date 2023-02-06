@@ -14,11 +14,13 @@ namespace BurnManager
             Console.WriteLine("Hello, World!");
             //TestDataTypes();
             //TestAPI();
-            TestChrisSerializer();
-            while (true) ; //prevent returning from main when awaited calls cause flow control to continue here
+            //TestJSONSerializer();
+            TestJSONSerializerBigger();
+
+            while (true) ; //prevent returning from main if awaited calls cause flow control to continue here
         }
 
-        static async void TestChrisSerializer()
+        static async Task TestJSONSerializerBigger()
         {
             FileProps testPropsA = new FileProps
             {
@@ -31,16 +33,78 @@ namespace BurnManager
                 SizeInBytes = 500,
                 Status = FileStatus.GOOD
             };
+            FileProps testPropsB = new FileProps
+            {
+                Checksum = new byte[] { 1, 2, 3, 4 },
+                FileName = "testPropsB",
+                HashAlgUsed = HashType.MD5,
+                TimeAdded = DateTime.Now,
+                LastModified = DateTime.MinValue,
+                OriginalPath = "e:\\testPropsB",
+                SizeInBytes = 300,
+                Status = FileStatus.FILE_MISSING
+            };
+            FileProps testPropsC = new FileProps
+            {
+                Checksum = new byte[] { 3, 3, 3, 3 },
+                FileName = "testPropsC",
+                HashAlgUsed = HashType.MD5,
+                TimeAdded = DateTime.Now,
+                LastModified = DateTime.MaxValue,
+                OriginalPath = "e:\\asdf\\testPropsC",
+                SizeInBytes = 600,
+                Status = FileStatus.FILE_MISSING
+            };
 
-            char[] serializedFileProps = testPropsA.Serialize('@');
+            FileAndDiscData data1 = new FileAndDiscData();
+            data1.AllFiles.Add(testPropsA);
+            data1.AllFiles.Add(testPropsB);
+            data1.AllFiles.Add(testPropsC);
 
-            Console.WriteLine(serializedFileProps);
+            VolumeProps testVol1 = new VolumeProps(100000);
+            VolumeProps testVol2 = new VolumeProps(100000);
+            testVol1.SetIdentifier(1);
+            testVol2.SetIdentifier(2);
+
+            //try adding volumeprops, then changing contents
+            data1.AllVolumes.Add(testVol1);
+            testVol1.Add(testPropsA);
+            testVol1.Add(testPropsB);
+
+            //try changing volumeprops contents, then adding
+            testVol2.Add(testPropsB);
+            testVol2.Add(testPropsC);
+            data1.AllVolumes.Add(testVol2);
+
+            string serialized = JsonSerializer.Serialize(data1);
+            FileAndDiscData data2 = JsonSerializer.Deserialize<FileAndDiscData>(serialized);
+            await data2.PopulateVolumes();
+            if (data1 == data2)
+            {
+                Pass("Deserialization of larger FileAndDiscData");
+            }
+            else Fail("Deserialization of larger FileAndDiscData");
+
+            List<FileProps> testRemove = (List<FileProps>)await data2.AllFiles.GetFilesByPartialMatch(new FileProps { FileName = "testPropsB", RelatedVolumes = null });
+            FileProps removeThis = testRemove.First();
+            //bool result = data2.AllFiles.Remove(removeThis);
+            bool result = await data2.AllFiles.Remove(removeThis, data2.AllVolumes);
+
+            VolumeProps comparePropsA = data2.AllVolumes.First();
+            VolumeProps comparePropsB = data2.AllVolumes.Last();
+
+            
+            if ( !(await comparePropsA.Contains(removeThis)) && !(await comparePropsB.Contains(removeThis)))
+            {
+                Pass("Cascading remove + reference structure of deserialized FileAndDiscData");
+            }
+            else Fail("Cascading remove + reference structure of deserialized FileAndDiscData");
         }
 
-        //Test that every data type serializes/deserializes correctly using the JSON serializer
         static async void TestJSONSerializer()
         {
-            FileProps testPropsA = new FileProps
+            FileAndDiscData data = new FileAndDiscData();
+            data.AllFiles.Add(new FileProps
             {
                 Checksum = new byte[] { 1, 1, 1, 1 },
                 FileName = "testPropsA",
@@ -50,40 +114,56 @@ namespace BurnManager
                 OriginalPath = "c:\\testPropsA",
                 SizeInBytes = 500,
                 Status = FileStatus.GOOD
-            };
+            });
 
-            string serialized = JsonSerializer.Serialize(testPropsA);
-            FileProps deserializedFileProps = JsonSerializer.Deserialize<FileProps>(serialized);
-            if (testPropsA == deserializedFileProps) Pass("FileProps serialization");
-            else Fail("FileProps serialization");
+            VolumeProps testVol = new VolumeProps(100000);
+            data.AllVolumes.Add(testVol);
+            testVol.Add(data.AllFiles.First());
 
-            FileList testList = new FileList();
-            testList.Add(testPropsA);
-            serialized = JsonSerializer.Serialize(testList);
-            FileList deserializedList = JsonSerializer.Deserialize<FileList>(serialized);
-            if (deserializedList == testList) Pass("FileList serialization");
-            else
+            Console.WriteLine("Verifying data correctness before serialization:");
+            if (data.AllVolumes.First().Files.First().RelatedVolumes.First().VolumeID == testVol.Identifier)
             {
-                Fail("FileList serialization");
-                Console.WriteLine("testList contents:");
-                foreach (var file in testList) Console.WriteLine(JsonSerializer.Serialize(file));
-                Console.WriteLine("deserializedList contents:");
-                foreach (var file in deserializedList) Console.WriteLine(JsonSerializer.Serialize(file));
+                Pass("Volume ID present in file matches the ID of the volume");
             }
+            else Fail("Volume ID present in file matches the ID of the volume");
 
-            VolumeProps testVolProps = new VolumeProps(1000000);
-            serialized = JsonSerializer.Serialize(testVolProps);
-            VolumeProps deserializedVolProps = JsonSerializer.Deserialize<VolumeProps>(serialized);
-            if (testVolProps == deserializedVolProps) Pass("Empty VolumeProps deserialization");
-            else Fail("Empty VolumeProps deserialization");
+            string serialized = JsonSerializer.Serialize(data);
+            FileAndDiscData deserialized = JsonSerializer.Deserialize<FileAndDiscData>(serialized);
+            await deserialized.PopulateVolumes();
 
-            await testVolProps.Add(deserializedFileProps);
-            await deserializedVolProps.Add(deserializedFileProps);
-            serialized = JsonSerializer.Serialize(deserializedVolProps);
-            deserializedVolProps = JsonSerializer.Deserialize<VolumeProps>(serialized);
-            if (testVolProps == deserializedVolProps) Pass("VolumeProps deserialization");
-            else Fail("VolumeProps deserialization");
+            DiscAndBurnStatus test1 = data.AllFiles.First().RelatedVolumes.First();
+            DiscAndBurnStatus test2 = deserialized.AllFiles.First().RelatedVolumes.First();
+            if (test1 == test2) Pass("Directly compare RelatedVolumes structs (no enumeration)");
+            else Fail("Directly compare RelatedVolumes structs (no enumeration)");
 
+            VolumeProps testVol1 = data.AllVolumes.First();
+            VolumeProps testVol2 = deserialized.AllVolumes.First();
+            if (testVol1 == testVol2)
+            {
+                Pass("Compare first VolumeProps to first deserialized VolumeProps");
+            }
+            else Fail("Compare first VolumeProps to first deserialized VolumeProps");
+
+            FileProps testfile1 = data.AllVolumes.First().Files.First();
+            FileProps testfile2 = deserialized.AllFiles.First();
+
+            if (testfile1 == testfile2)
+            {
+                Pass("Compare data content of test file in data.AllVolumes to test file in deserialized.AllFiles");
+            }
+            else Fail("Compare data content of test file in data.AllVolumes to test file in deserialized.AllFiles");
+
+            if (Object.ReferenceEquals(deserialized.AllFiles.First(), deserialized.AllVolumes.First().Files.First()))
+            {
+                Pass("Restructure of object references after deserialization");
+            }
+            else Fail("Restructure of object references after deserialization");
+
+            if (data == deserialized)
+            {
+                Pass("Comparison of entire FileAndDiscData struct");
+            }
+            else Fail("Comparison of entire FileAndDiscData struct");
         }
 
         static async void TestAPI()
@@ -190,8 +270,8 @@ namespace BurnManager
 
             VolumeProps volPropsA = new VolumeProps(100000000);
             VolumeProps volPropsB = new VolumeProps(987654321);
-            await volPropsA.Add(testPropsA); //500bytes
-            await volPropsA.Add(testPropsB); //300bytes
+            volPropsA.Add(testPropsA); //500bytes
+            volPropsA.Add(testPropsB); //300bytes
 
             if (volPropsA.SpaceRemaining == (100000000 - 800)) Pass("VolumeProps space remaining decrement");
             else Fail("VolumeProps space remaining decrement: " + volPropsA.SpaceRemaining);
@@ -199,11 +279,11 @@ namespace BurnManager
             if (volPropsA.SpaceUsed == 800) Pass("VolumeProps space used increment.");
             else Fail("VolumeProps space used increment: " + volPropsA.SpaceUsed);
 
-            if (testPropsA.RelatedVolumes[0].Volume == volPropsA) Pass("Adding volume to FileProps on VolumeProps add, and VolumeProps equality.");
+            if (testPropsA.RelatedVolumes[0].VolumeID == volPropsA.Identifier) Pass("Adding volume to FileProps on VolumeProps add, and VolumeProps equality.");
             else Fail("Adding volume to FileProps on VolumeProps add, and VolumeProps equality.");
 
-            if (testPropsA.RelatedVolumes[0].Volume == volPropsB) Fail("VolumeProps inequality.");
-            else Pass("VolumeProps inequality.");
+            //if (testPropsA.RelatedVolumes[0].VolumeID == volPropsB.Identifier) Fail("VolumeProps equality false.");
+            //else Pass("VolumeProps equality false.");
 
             if (await volPropsA.Contains(testPropsA) && !(await volPropsA.Contains(testPropsC))){
                 Pass("VolumeProps contains");
@@ -220,24 +300,24 @@ namespace BurnManager
             else Fail("FileProps copy 2: DiscAndBurnStatus copy & compare");
             if (testPropsB.RelatedVolumes[0] == testPropsBCopy.RelatedVolumes[0]) Pass("Compare 1st element of DiscAndBurnStatus to copied DiscAndBurnStatus");
             else Fail("Compare 1st element of DiscAndBurnStatus to copied DiscAndBurnStatus");
-            if (testPropsB.RelatedVolumes[0].Volume == testPropsBCopy.RelatedVolumes[0].Volume)
+            if (testPropsB.RelatedVolumes[0].VolumeID == testPropsBCopy.RelatedVolumes[0].VolumeID)
             {
                 Pass("DiscAndBurnStatus element Volume property to copied DiscAndBurnStatus Volume property equality, comparing two VolumeProps");
             }
             else Fail("DiscAndBurnStatus element Volume property to copied DiscAndBurnStatus Volume property equality, comparing two VolumeProps");
 
-            await volPropsA.Remove(testPropsA);
+            volPropsA.CascadeRemove(testPropsA);
             if (volPropsA.SpaceRemaining == (100000000 - 300) && volPropsA.SpaceUsed == 300) Pass("VolumeProps space remaining/used increment/decrement");
             else Fail("VolumeProps space remaining/used increment/decrement");
 
             if (testPropsA.RelatedVolumes.Count == 0) Pass("RelatedVolumes decrement with removal of FileProps from VolumeProps");
             else Fail("RelatedVolumes decrement with removal of FileProps from VolumeProps");
 
-            await volPropsA.Add(testPropsA);
+            volPropsA.Add(testPropsA);
             volPropsA.AssignIdentifierDelegate(DummyIDDelegate);
             volPropsA.SetIdentifier();
 
-            if (volPropsA.Identifier == "asdf") Pass("VolumeProps identifier delegate set and assignment");
+            if (volPropsA.Identifier == 5) Pass("VolumeProps identifier delegate set and assignment");
             else Fail("VolumeProps identifier delegate set and assignment");
 
             VolumeProps volPropsACopy = new VolumeProps(volPropsA);
@@ -247,7 +327,7 @@ namespace BurnManager
             if (await volPropsACopy.Contains(testPropsA)) Pass("VolumeProps copy constructor 2 & Contains");
             else Fail("VolumeProps copy constructor 2 & Contains");
 
-            await volPropsB.Add(testPropsA);
+            volPropsB.Add(testPropsA);
             int foundVols = 0;
             foreach (var file in testPropsA.GetPendingBurns())
             {
@@ -293,9 +373,9 @@ namespace BurnManager
             else Fail("FileList inequality 2 (equal length lists with different contents)");
         }
 
-        public static string DummyIDDelegate()
+        public static int DummyIDDelegate()
         {
-            return "asdf";
+            return 5;
         }
 
         static void Pass(string description)

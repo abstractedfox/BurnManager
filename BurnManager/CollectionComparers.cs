@@ -16,7 +16,20 @@ namespace BurnManager
             int bCount = listB.Count;
             if (aCount + bCount == 0) return true;
             if (aCount != bCount) return false;
-            foreach (var item in listA) if (!listB.Contains(item)) return false;
+
+            foreach (var itemA in listA)
+            {
+                bool match = false;
+                foreach (var itemB in listB)
+                {
+                    if (itemA == itemB) match = true;
+                    break;
+                }
+                if (!match)
+                {
+                    return false;
+                }
+            }
             return true;
         }
 
