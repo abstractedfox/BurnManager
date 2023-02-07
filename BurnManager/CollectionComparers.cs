@@ -16,7 +16,20 @@ namespace BurnManager
             int bCount = listB.Count;
             if (aCount + bCount == 0) return true;
             if (aCount != bCount) return false;
-            foreach (var item in listA) if (!listB.Contains(item)) return false;
+
+            foreach (var itemA in listA)
+            {
+                bool match = false;
+                foreach (var itemB in listB)
+                {
+                    if (itemA == itemB) match = true;
+                    break;
+                }
+                if (!match)
+                {
+                    return false;
+                }
+            }
             return true;
         }
 
@@ -28,6 +41,20 @@ namespace BurnManager
             if (aCount != bCount) return false;
 
             foreach (var item in collectionA) if (!collectionB.Contains(item)) return false;
+            return true;
+        }
+
+        public static bool CompareFileLists(FileList a, FileList b)
+        {
+            int aCount = a.Count;
+            int bCount = b.Count;
+            if (aCount + bCount == 0) return true;
+            if (aCount != bCount) return false;
+
+            foreach (var item in a)
+            {
+                if (!b.Contains(item)) return false;
+            }
             return true;
         }
 

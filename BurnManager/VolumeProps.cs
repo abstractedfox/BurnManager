@@ -7,7 +7,7 @@ namespace BurnManager
     //Represents a single backup volume (blu ray disc, drive, etc). Operations are atomic.
     public class VolumeProps
     {
-        public delegate string IdentifierDelegate(); //a delegate which assigns an identifier to this VolumeProps
+        public delegate int IdentifierDelegate(); //a delegate which assigns an identifier to this VolumeProps
         private IdentifierDelegate? _getIdentifier { get; set; }
         public IdentifierDelegate? GetIdentifier
         {
@@ -17,10 +17,12 @@ namespace BurnManager
             }
         }
         public readonly object LockObj = new object();
-        private string _identifier { get; set; } = "";
+        private int _identifier { get; set; } = -1;
+        public string Name { get; set; } = "";
         private ulong _capacityInBytes { get; set; }
         private int _timesBurned { get; set; } = 0;
-        public FileList _files { get; } = new FileList();
+        [JsonIgnore]
+        public FileList Files { get; } = new FileList();
 
         public ulong CapacityInBytes { 
             get
@@ -36,7 +38,7 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    return _capacityInBytes - _files.TotalSizeInBytes;
+                    return _capacityInBytes - Files.TotalSizeInBytes;
                 }
             }
         }
@@ -45,11 +47,11 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    return _files.TotalSizeInBytes;
+                    return Files.TotalSizeInBytes;
                 }
             }
         }
-        public string Identifier { 
+        public int Identifier { 
             get
             {
                 lock (LockObj)
@@ -90,7 +92,7 @@ namespace BurnManager
                     {
                         lock (file.LockObj)
                         {
-                            _files.Add(file);
+                            Files.Add(file);
                         }
                     }
                 }
@@ -99,7 +101,7 @@ namespace BurnManager
 
         [JsonConstructor]
         public VolumeProps(IdentifierDelegate GetIdentifier, ulong CapacityInBytes, 
-            string Identifier, int TimesBurned, FileList Files)
+            int Identifier, int TimesBurned, FileList Files)
         {
             lock (LockObj)
             {
@@ -107,49 +109,93 @@ namespace BurnManager
                 this._capacityInBytes = CapacityInBytes;
                 this._identifier = Identifier;
                 this._timesBurned = TimesBurned;
-                this._files = Files;
+                Files = new FileList();
             }
         }
 
-        public async Task Add(FileProps file)
+        public void Add(FileProps file)
+        {
+            lock (LockObj)
+            {
+                lock (file.LockObj)
+                {
+                    if (Files.Contains(file)) return;
+                    Files.Add(file);
+                    file.RelatedVolumes.Add(new DiscAndBurnStatus { IsBurned = false, VolumeID = _identifier });
+                }
+            }
+        }
+
+        //For use when deserializing. If (skipNewRelationship), adds a file to this VolumeProps without creating
+        //a new relationship to this VolumeProps in the file's RelatedVolumes
+        public void Add(FileProps file, bool skipNewRelationship)
+        {
+            lock (LockObj)
+            {
+                lock (file.LockObj)
+                {
+                    if (Files.Contains(file)) return;
+                    Files.Add(file);
+                    if (!skipNewRelationship)
+                    {
+                        file.RelatedVolumes.Add(new DiscAndBurnStatus { IsBurned = false, VolumeID = _identifier });
+                    }
+                }
+            }
+        }
+
+        public async Task AddAsync(FileProps file)
         {
             await Task.Run(() =>
             {
-                lock (LockObj)
-                {
-                    lock (file.LockObj)
-                    {
-                        if (_files.Contains(file)) return;
-                        _files.Add(file);
-                        file.RelatedVolumes.Add(new DiscAndBurnStatus { IsBurned = false, Volume = this });
-                    }
-                }
+                Add(file);
             });
         }
 
-        public async Task<bool> Remove(FileProps file)
+        //Does not remove references to this VolumeProps from the FileProps being removed
+        public bool Remove(FileProps file)
+        {
+            lock (LockObj)
+            {
+                lock (file.LockObj)
+                {
+                    if (Files.Remove(file)) return true;
+                }
+            }
+            return false;
+        }
+
+        //Remove the file from this VolumeProps and remove the reference to this VolumeProps from the file
+        public bool CascadeRemove(FileProps file)
         {
             bool operationResult = true;
+            lock (LockObj)
+            {
+                lock (file.LockObj)
+                {
+                    if (Files.Remove(file))
+                    {
+                        DiscAndBurnStatus? thisDisc = file.RelatedVolumes.Where(a => a.VolumeID == _identifier).First();
+                        if (thisDisc == null)
+                        {
+                            throw new DataException("File did not contain a relationship to this disc.");
+                        }
+                        file.RelatedVolumes.Remove(thisDisc);
+                    }
+                    else operationResult = false;
+                }
+            }
+            return operationResult;
+        }
+
+        public async Task<bool> RemoveAsync(FileProps file)
+        {
+            bool result = false;
             await Task.Run(() =>
             {
-                lock (LockObj)
-                {
-                    lock (file.LockObj)
-                    {
-                        if (_files.Remove(file))
-                        {
-                            DiscAndBurnStatus? thisDisc = file.RelatedVolumes.Where(a => a.Volume == this).First();
-                            if (thisDisc == null)
-                            {
-                                throw new DataException("File did not contain a relationship to this disc.");
-                            }
-                            file.RelatedVolumes.Remove(thisDisc);
-                        }
-                        else operationResult = false;
-                    }
-                }
+                result = CascadeRemove(file);
             });
-            return operationResult;
+            return result;
         }
 
         public async Task<bool> Contains(FileProps compare)
@@ -160,7 +206,7 @@ namespace BurnManager
                 {
                     lock (compare.LockObj)
                     {
-                        List<FileProps> results = _files.Where(a => a == compare).ToList();
+                        List<FileProps> results = Files.Where(a => a == compare).ToList();
                         if (results.Count > 0) result = true;
                     }
                 }
@@ -209,6 +255,14 @@ namespace BurnManager
             }
         }
 
+        public void SetIdentifier(int newID)
+        {
+            lock (LockObj)
+            {
+                _identifier = newID;
+            }
+        }
+
         public bool HasIdentifierDelegate
         {
             get
@@ -220,17 +274,79 @@ namespace BurnManager
             }
         }
 
+        //From a list of VolumeProps, generate an ID that is not used by any existing VolumeProps
+        public static int GetNewID(ICollection<VolumeProps> VolumePropsCollection)
+        {
+            int favorite = 0;
+            bool maxValue = false;
+            foreach (var volume in VolumePropsCollection)
+            {
+                if (favorite <= volume.Identifier) favorite = volume.Identifier + 1;
+                if (volume.Identifier == int.MaxValue)
+                {
+                    maxValue = true;
+                    break;
+                }
+            }
+
+            if (maxValue)
+            {
+                bool foundNewValue = false;
+                favorite = 0;
+                List<VolumeProps> volumesAsList = VolumePropsCollection.ToList();
+                while (!foundNewValue)
+                {
+                    foreach (var volume in VolumePropsCollection)
+                    {
+                        if (favorite == volume.Identifier)
+                        {
+                            favorite++;
+                            foundNewValue = false;
+                            break;
+                        }
+                        foundNewValue = true;
+                    }
+                    if (foundNewValue) break;
+                    if (favorite == int.MaxValue) throw new OverflowException("What are you backing up onto " + int.MaxValue + " volumes?");
+                }
+            }
+
+            return favorite;
+        }
+
+        //Returns all VolumeProps matching 'ID'
+        public static List<VolumeProps> GetVolumePropsByID(ICollection<VolumeProps> Source, int ID)
+        {
+            List<VolumeProps> results = new List<VolumeProps>();
+            foreach (var volume in Source)
+            {
+                if (volume.Identifier == ID) results.Add(volume);
+            }
+            return results;
+        }
+
         public static bool operator ==(VolumeProps? a, VolumeProps? b)
         {
-            if (a is null && !(b is null) || !(a is null) && b is null) return false;
+            //if (a is null && !(b is null) || !(a is null) && b is null) return false;
+            if (a is null ^ b is null) return false;
             if (a is null && b is null) return true;
-            List<FileProps> listA = new List<FileProps>();
-            List<FileProps> listB = new List<FileProps>();
-            foreach (var file in a) listA.Add(file);
-            foreach (var file in b) listB.Add(file);
+            if (a.Files.Count() != b.Files.Count()) return false;
 
-            return (CollectionComparers.CompareLists(listA, listB) &&
-                a.CapacityInBytes == b.CapacityInBytes &&
+            bool fileListsIdentical = false;
+            foreach (FileProps fileA in a.Files)
+            {
+                foreach (FileProps fileB in b.Files)
+                {
+                    if (fileA == fileB)
+                    {
+                        fileListsIdentical = true;
+                        break;
+                    }
+                    if (!fileListsIdentical) return false;
+                }
+            }
+
+            return (a.CapacityInBytes == b.CapacityInBytes &&
                 a.Identifier == b.Identifier &&
                 a.TimesBurned == b.TimesBurned);
         }
@@ -244,7 +360,7 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    return _files.GetEnumerator();
+                    return Files.GetEnumerator();
                 }
             }
         }

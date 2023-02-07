@@ -4,7 +4,6 @@
 //using System.Security.Cryptography.X509Certificates;
 
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace BurnManager
 {
@@ -62,66 +61,11 @@ namespace BurnManager
     //Represents a single volume that a FileProps is associated with, and whether it has been burned to that volume
     public class DiscAndBurnStatus
     {
-        public VolumeProps Volume { get; set; }
+        public int VolumeID { get; set; }
         public bool IsBurned { get; set; }
-
-        public static bool operator ==(DiscAndBurnStatus? a, DiscAndBurnStatus? b)
-        {
-            if (a is null && !(b is null) || !(a is null) && b is null) return false;
-            if (a is null && b is null) return true;
-            lock (a.Volume.LockObj)
-            {
-                lock (b.Volume.LockObj)
-                {
-                    return (a.Volume.Identifier == b.Volume.Identifier && a.IsBurned == b.IsBurned);
-                }
-            }
-            //note: volumes should not be compared directly here, or every field will be compared, which will compare every
-            //FileProps, which will compare every DiscAndBurnStatus
-        }
-        public static bool operator !=(DiscAndBurnStatus? a, DiscAndBurnStatus? b)
-        {
-            return !(a == b);
-        }
-    }
-
-    //Top level struct, this is what contains all the files and volumes we're tracking and what will get passed to the serializer
-    public class FileAndDiscData
-    {
-        private FileList _allFiles { get; set; } = new FileList();
-        public FileList AllFiles { get
-            {
-                return _allFiles;
-            }
-        }
-
-        private List<VolumeProps> _allVolumes = new List<VolumeProps>();
-        public List<VolumeProps> AllVolumes { get
-            {
-                return _allVolumes;
-            }
-        }
-        public int FormatVersion { get; } = 1;
         public readonly object LockObj = new object();
 
-        public FileAndDiscData()
-        {
-        }
-
-        [JsonConstructor]
-        public FileAndDiscData(FileList AllFiles, List<VolumeProps> AllVolumes)
-        {
-            _allFiles = AllFiles;
-            _allVolumes = AllVolumes;
-        }
-
-        public FileAndDiscData(FileAndDiscData copySource)
-        {
-            foreach (var file in copySource.AllFiles) AllFiles.Add(file);
-            foreach (var volume in copySource.AllVolumes) AllVolumes.Add(volume);
-        }
-
-        public static bool operator ==(FileAndDiscData? a, FileAndDiscData? b)
+        public static bool operator ==(DiscAndBurnStatus? a, DiscAndBurnStatus? b)
         {
             if (a is null && !(b is null) || !(a is null) && b is null) return false;
             if (a is null && b is null) return true;
@@ -129,13 +73,13 @@ namespace BurnManager
             {
                 lock (b.LockObj)
                 {
-                    return (a.AllFiles == b.AllFiles &&
-                        CollectionComparers.CompareLists(a.AllVolumes, b.AllVolumes)) &&
-                        a.FormatVersion == b.FormatVersion;
+                    return (a.VolumeID == b.VolumeID && a.IsBurned == b.IsBurned);
                 }
             }
+            //note: volumes should not be compared directly here, or every field will be compared, which will compare every
+            //FileProps, which will compare every DiscAndBurnStatus, which will compare the volume
         }
-        public static bool operator !=(FileAndDiscData? a, FileAndDiscData? b)
+        public static bool operator !=(DiscAndBurnStatus? a, DiscAndBurnStatus? b)
         {
             return !(a == b);
         }

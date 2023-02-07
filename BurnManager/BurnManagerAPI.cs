@@ -196,9 +196,9 @@ namespace BurnManager
             };
             VolumeProps volPropsA = new VolumeProps(100000000);
             VolumeProps volPropsB = new VolumeProps(987654321);
-            await volPropsA.Add(testPropsA); //500bytes
-            await volPropsA.Add(testPropsB); //300bytes
-            await volPropsB.Add(testPropsC);
+            await volPropsA.AddAsync(testPropsA); //500bytes
+            await volPropsA.AddAsync(testPropsB); //300bytes
+            await volPropsB.AddAsync(testPropsC);
 
             data.AllFiles.Add(testPropsA);
             data.AllFiles.Add(testPropsB);

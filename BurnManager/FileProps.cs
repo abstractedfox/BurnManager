@@ -10,7 +10,7 @@ namespace BurnManager
         public string? OriginalPath { get; set; }
         public ulong? SizeInBytes { get; set; }
         public DateTime? LastModified { get; set; } //The last-modified time of this file, from the file system
-        public List<DiscAndBurnStatus> RelatedVolumes { get; set; } = new List<DiscAndBurnStatus>(); //Volumes which this file is or may be burned to
+        public List<DiscAndBurnStatus>? RelatedVolumes { get; set; } = new List<DiscAndBurnStatus>(); //Volumes which this file is or may be burned to
         public byte[]? Checksum { get; set; }
         public HashType? HashAlgUsed { get; set; }
         public DateTime? TimeAdded { get; set; } //The date & time this instance was created
@@ -23,10 +23,10 @@ namespace BurnManager
                 return _monolithic;
             }
         }
+        //Note: Properties are nullable so instances of this type can be used for partial comparisons with PartialEquals(...)
 
         public readonly object LockObj = new object();
 
-        //Note: Properties are nullable so instances of this type can be used for partial comparisons with PartialEquals(...)
         
         public FileProps()
         {
@@ -53,9 +53,9 @@ namespace BurnManager
         }
 
         [JsonConstructor]
-        public FileProps(string FileName, string OriginalPath, ulong SizeInBytes, DateTime LastModified,
-            List<DiscAndBurnStatus> RelatedVolumes, byte[] Checksum, HashType HashAlgUsed, DateTime TimeAdded,
-            FileStatus Status, MonolithicCollection Monolithic)
+        public FileProps(string? FileName, string? OriginalPath, ulong? SizeInBytes, DateTime? LastModified,
+            List<DiscAndBurnStatus> RelatedVolumes, byte[]? Checksum, HashType? HashAlgUsed, DateTime? TimeAdded,
+            FileStatus? Status, MonolithicCollection Monolithic)
         {
             lock (LockObj) { 
                 this.FileName = FileName;
@@ -82,12 +82,29 @@ namespace BurnManager
         {
             if (a == null || b == null) return false;
 
+            if (!(a.RelatedVolumes is null ^ b.RelatedVolumes is null))
+            {
+                foreach (DiscAndBurnStatus relationshipA in a.RelatedVolumes)
+                {
+                    bool result = false;
+                    foreach (DiscAndBurnStatus relationshipB in b.RelatedVolumes)
+                    {
+                        if (relationshipA == relationshipB)
+                        {
+                            result = true;
+                            break;
+                        }
+                    }
+                    if (!result) return false;
+                }
+            }
+
             //thought: this could also be a huge boolean expression, but do we want a huge boolean expression?
             if (a.FileName != null && b.FileName != null && a.FileName != b.FileName) return false;
             if (a.OriginalPath != null && b.OriginalPath != null && a.OriginalPath != b.OriginalPath) return false;
             if (a.SizeInBytes != null && b.SizeInBytes != null && a.SizeInBytes != b.SizeInBytes) return false;
             if (a.LastModified != null && b.LastModified != null && a.LastModified != b.LastModified) return false;
-            if (!CollectionComparers.CompareLists(a.RelatedVolumes, b.RelatedVolumes)) return false;
+            //if (!CollectionComparers.CompareLists(a.RelatedVolumes, b.RelatedVolumes)) return false;
             if (a.Checksum != null && b.Checksum != null && !CollectionComparers.CompareByteArrays(a.Checksum, b.Checksum)) return false;
             if (a.HashAlgUsed != null && b.HashAlgUsed != null && a.HashAlgUsed != b.HashAlgUsed) return false;
             if (a.TimeAdded != null && b.TimeAdded != null && a.TimeAdded != b.TimeAdded) return false;
@@ -100,11 +117,22 @@ namespace BurnManager
         {
             if (a is null && !(b is null) || !(a is null) && b is null) return false;
             if (a is null && b is null) return true;
+
+            bool relationshipCompare = false;
+            foreach (DiscAndBurnStatus relationships1 in a.RelatedVolumes)
+            {
+                foreach (DiscAndBurnStatus relationships2 in b.RelatedVolumes)
+                {
+                    if (relationships1 == relationships2) relationshipCompare = true;
+                    break;
+                }
+                if (!relationshipCompare) return false;
+            }
+
             return (a.FileName == b.FileName &&
                 a.OriginalPath == b.OriginalPath &&
                 a.SizeInBytes == b.SizeInBytes &&
                 a.LastModified == b.LastModified &&
-                CollectionComparers.CompareLists(a.RelatedVolumes, b.RelatedVolumes) &&
                 CollectionComparers.CompareByteArrays(a.Checksum, b.Checksum) &&
                 a.HashAlgUsed == b.HashAlgUsed &&
                 a.TimeAdded == b.TimeAdded &&
@@ -131,5 +159,6 @@ namespace BurnManager
 
             return false;
         }
+
     }
 }
