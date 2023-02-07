@@ -109,7 +109,6 @@ namespace BurnManager
                 this._capacityInBytes = CapacityInBytes;
                 this._identifier = Identifier;
                 this._timesBurned = TimesBurned;
-                //this.Files = Files;
                 Files = new FileList();
             }
         }
@@ -347,15 +346,7 @@ namespace BurnManager
                 }
             }
 
-            /*
-            return (CollectionComparers.CompareLists(listA, listB) &&
-                a.CapacityInBytes == b.CapacityInBytes &&
-                a.Identifier == b.Identifier &&
-                a.TimesBurned == b.TimesBurned);
-            */
-            //asdf
-            return //(CollectionComparers.CompareFileLists(a.Files, b.Files) &&
-                (a.CapacityInBytes == b.CapacityInBytes &&
+            return (a.CapacityInBytes == b.CapacityInBytes &&
                 a.Identifier == b.Identifier &&
                 a.TimesBurned == b.TimesBurned);
         }

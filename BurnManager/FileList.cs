@@ -162,7 +162,7 @@ namespace BurnManager
         }
 
         //Remove a file from this list. This will Not remove relationships to this file from volumes in its RelatedVolumes struct
-        //If removing from a top level file list (ie a list that is meant to track all files) use the overload
+        //If removing from a top level file list (ie a list that is meant to track all files) use CascadeRemove
         //Note that both Remove functions don't check whether a file is marked as burned, they only care about data functionality
         public bool Remove(FileProps item)
         {
@@ -181,7 +181,7 @@ namespace BurnManager
         }
 
         //The passed collection of VolumeProps will be searched for references to the removed file, removing it from those volumes as well
-        public async Task<bool> Remove(FileProps item, ICollection<VolumeProps> relatedVolumes)
+        public async Task<bool> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
         {
             bool operationResult = false;
             await Task.Run(() =>

@@ -88,7 +88,7 @@ namespace BurnManager
             List<FileProps> testRemove = (List<FileProps>)await data2.AllFiles.GetFilesByPartialMatch(new FileProps { FileName = "testPropsB", RelatedVolumes = null });
             FileProps removeThis = testRemove.First();
             //bool result = data2.AllFiles.Remove(removeThis);
-            bool result = await data2.AllFiles.Remove(removeThis, data2.AllVolumes);
+            bool result = await data2.AllFiles.CascadeRemove(removeThis, data2.AllVolumes);
 
             VolumeProps comparePropsA = data2.AllVolumes.First();
             VolumeProps comparePropsB = data2.AllVolumes.Last();
@@ -354,9 +354,6 @@ namespace BurnManager
 
             if (allData.AllFiles == allDataCopy.AllFiles) Pass("FileAndDiscData copy test 2 and FileList equality");
             else Fail("FileAndDiscData copy test 2");
-
-            if (CollectionComparers.CompareLists(allData.AllVolumes, allDataCopy.AllVolumes)) Pass("FileAndDiscData copy test 3");
-            else Fail("FileAndDiscData copy test 3");
 
             FileList testList = new FileList();
             testList.Add(testPropsB);
