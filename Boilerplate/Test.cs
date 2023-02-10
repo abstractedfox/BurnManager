@@ -15,9 +15,19 @@ namespace BurnManager
             //TestDataTypes();
             //TestAPI();
             //TestJSONSerializer();
-            TestJSONSerializerBigger();
-
+            //TestJSONSerializerBigger();
+            TestFileListOverride();
             while (true) ; //prevent returning from main if awaited calls cause flow control to continue here
+        }
+
+        static void TestFileListOverride()
+        {
+            VolumeProps test = new VolumeProps(123456789);
+            FileProps file = new FileProps { SizeInBytes = 200 };
+            ObservableFileList a = new ObservableFileList();
+            a.Add(file);
+            test.Add(file);
+            Console.WriteLine(a.TotalSizeInBytes);
         }
 
         static async Task TestJSONSerializerBigger()

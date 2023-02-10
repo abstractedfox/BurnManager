@@ -11,13 +11,13 @@ namespace BurnManager
     //Most runtime program logic interfaces through this class
     public class BurnManagerAPI
     {
-        public FileAndDiscData data;
-        public FileAndDiscData lastSavedState;
+        public ObservableFileAndDiscData data;
+        public ObservableFileAndDiscData lastSavedState;
         public object LockObj = new object();
 
         public BurnManagerAPI()
         {
-            data = new FileAndDiscData();
+            data = new ObservableFileAndDiscData();
             lastSavedState = data;
         }
 
@@ -31,7 +31,7 @@ namespace BurnManager
         public ResultCode LoadFromJson(string serializedJson)
         {
             ResultCode operationResult = 0;
-            FileAndDiscData newData = JsonToFileAndDiscData(serializedJson, ref operationResult);
+            ObservableFileAndDiscData newData = new ObservableFileAndDiscData(JsonToFileAndDiscData(serializedJson, ref operationResult));
             if (operationResult == ResultCode.SUCCESSFUL)
             {
                 lock (LockObj)
