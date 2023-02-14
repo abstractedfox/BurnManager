@@ -194,6 +194,17 @@ namespace BurnManager
                 SizeInBytes = 600,
                 Status = FileStatus.FILE_MISSING
             };
+            FileProps testPropsD = new FileProps
+            {
+                Checksum = new byte[] { 4, 3, 3, 9, 4, 7, 5, 6 },
+                FileName = "testPropsD",
+                HashAlgUsed = HashType.MD5,
+                TimeAdded = DateTime.Now,
+                LastModified = DateTime.MaxValue,
+                OriginalPath = "e:\\asdf\\testPropsD",
+                SizeInBytes = 700,
+                Status = FileStatus.FILE_MISSING
+            };
             VolumeProps volPropsA = new VolumeProps(100000000);
             VolumeProps volPropsB = new VolumeProps(987654321);
             await volPropsA.AddAsync(testPropsA); //500bytes
@@ -203,6 +214,7 @@ namespace BurnManager
             data.AllFiles.Add(testPropsA);
             data.AllFiles.Add(testPropsB);
             data.AllFiles.Add(testPropsC);
+            data.AllFiles.Add(testPropsD);
             data.AllVolumes.Add(volPropsA);
             data.AllVolumes.Add(volPropsB);
 

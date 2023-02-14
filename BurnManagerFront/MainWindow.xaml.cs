@@ -15,7 +15,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 
 using System.Collections.ObjectModel;
-
+using System.Runtime.CompilerServices;
 
 namespace BurnManagerFront
 {
@@ -26,18 +26,18 @@ namespace BurnManagerFront
     {
         BurnManagerAPI api;
 
-        public string teststring { get; set; } = "Speegly noible";
-        public ObservableCollection<string> test { get; set; } = new ObservableCollection<string>();
-
         public MainWindow()
         {
             InitializeComponent();
             api = new BurnManagerAPI();
             api.TestState();
-            DataContext = api.data.AllFiles;
-            test.Add("adsf");
-            test.Add("hngg");
-            test.Add("blastoise");
+            DataContext = api.data.AllFiles.Files;
+
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            FrontendFunctions.OpenFilePicker(this);
         }
     }
 }

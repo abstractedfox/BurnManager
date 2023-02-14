@@ -7,7 +7,22 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
-                 Margin="20,20,20,20" ItemsSource="{Binding DataContext, ElementName=listBox}"/>
+        <StackPanel>
+            <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
+                     Margin="20,20,20,20" ItemsSource="{Binding DataContext, ElementName=listBox}">
+        
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Path=FileName}" />
+                            <TextBlock Text="{Binding Path=OriginalPath}" />
+                        
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            
+            </ListBox>
+            <Button Content="Button!" Click="Button_Click"/>
+        </StackPanel>
     </Grid>
 </Window>

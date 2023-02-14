@@ -11,7 +11,7 @@ namespace BurnManager
         public readonly object LockObj = new object();
 
         //private List<FileProps> _files;
-        private HashSet<FileProps> _files = new HashSet<FileProps>();
+        protected HashSet<FileProps> _files = new HashSet<FileProps>();
         private ulong _totalSizeInBytes;
         public ulong TotalSizeInBytes
         {
@@ -25,7 +25,7 @@ namespace BurnManager
         }
 
         //yes, this is for the json serializer
-        public HashSet<FileProps> Files
+        public virtual HashSet<FileProps> Files
         {
             get
             {
@@ -113,7 +113,7 @@ namespace BurnManager
 
         public bool IsReadOnly => false;
 
-        public void Add(FileProps item)
+        public virtual void Add(FileProps item)
         {
             if (item == null)
             {
@@ -165,7 +165,7 @@ namespace BurnManager
         //Remove a file from this list. This will Not remove relationships to this file from volumes in its RelatedVolumes struct
         //If removing from a top level file list (ie a list that is meant to track all files) use CascadeRemove
         //Note that both Remove functions don't check whether a file is marked as burned, they only care about data functionality
-        public bool Remove(FileProps item)
+        public virtual bool Remove(FileProps item)
         {
             lock (LockObj)
             {
@@ -182,7 +182,7 @@ namespace BurnManager
         }
 
         //The passed collection of VolumeProps will be searched for references to the removed file, removing it from those volumes as well
-        public async Task<bool> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
+        public virtual async Task<bool> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
         {
             bool operationResult = false;
             await Task.Run(() =>
