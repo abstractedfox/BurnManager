@@ -5,6 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.IO.IsolatedStorage;
+
+
+using System.Security.Principal;
 
 namespace BurnManager
 {
@@ -82,9 +86,9 @@ namespace BurnManager
 
 
         //===================File and sorting operations
-        public void AddFile()
+        public void AddFile(FileProps file)
         {
-
+            data.AllFiles.Add(file);
         }
         public void NewVolume(ulong sizeInBytes)
         {

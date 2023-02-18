@@ -9,11 +9,11 @@ namespace BurnManager
         public string? FileName { get; set; }
         public string? OriginalPath { get; set; }
         public ulong? SizeInBytes { get; set; }
-        public DateTime? LastModified { get; set; } //The last-modified time of this file, from the file system
+        public DateTimeOffset? LastModified { get; set; } //The last-modified time of this file, from the file system
         public List<DiscAndBurnStatus>? RelatedVolumes { get; set; } = new List<DiscAndBurnStatus>(); //Volumes which this file is or may be burned to
         public byte[]? Checksum { get; set; }
         public HashType? HashAlgUsed { get; set; }
-        public DateTime? TimeAdded { get; set; } //The date & time this instance was created
+        public DateTimeOffset? TimeAdded { get; set; } //The date & time this instance was created
         public FileStatus? Status { get; set; }
         private MonolithicCollection _monolithic { get; set; } = new MonolithicCollection();
         public MonolithicCollection Monolithic

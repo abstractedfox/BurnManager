@@ -22,7 +22,7 @@
                 </ListBox.ItemTemplate>
             
             </ListBox>
-            <Button Content="Button!" Click="Button_Click"/>
+            <Button Content="Button!" Click="AddFiles_ButtonClick"/>
         </StackPanel>
     </Grid>
 </Window>

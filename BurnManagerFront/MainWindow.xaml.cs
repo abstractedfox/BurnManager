@@ -16,6 +16,7 @@ using System.Windows.Shapes;
 
 using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
+using Windows.Storage;
 
 namespace BurnManagerFront
 {
@@ -30,14 +31,21 @@ namespace BurnManagerFront
         {
             InitializeComponent();
             api = new BurnManagerAPI();
-            api.TestState();
+            //api.TestState();
             DataContext = api.data.AllFiles.Files;
 
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private async void AddFiles_ButtonClick(object sender, RoutedEventArgs e)
         {
-            FrontendFunctions.OpenFilePicker(this);
+            IReadOnlyList<StorageFile> files = await FrontendFunctions.OpenFilePicker(this);
+
+            await Task.Run(async () => { 
+                foreach (StorageFile file in files)
+                {
+                    api.AddFile(await FrontendFunctions.StorageFileToFileProps(file));
+                }
+            });
         }
     }
 }
