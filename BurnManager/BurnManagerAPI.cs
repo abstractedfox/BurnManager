@@ -9,6 +9,9 @@ using System.IO.IsolatedStorage;
 
 
 using System.Security.Principal;
+using System.Security.Cryptography;
+using System.Reflection.Metadata.Ecma335;
+
 
 namespace BurnManager
 {
@@ -88,7 +91,10 @@ namespace BurnManager
         //===================File and sorting operations
         public void AddFile(FileProps file)
         {
-            data.AllFiles.Add(file);
+            lock (LockObj)
+            {
+                data.AllFiles.Add(file);
+            }
         }
         public void NewVolume(ulong sizeInBytes)
         {
@@ -109,9 +115,72 @@ namespace BurnManager
 
         }
 
-        public static void GenerateChecksums(FileList files)
+        //Generates checksums for all passed files. Errored files will be returned in errorOutput
+        public static async Task GenerateChecksums(ICollection<FileProps> files, bool overwriteExistingChecksum, ICollection<FileProps> errorOutput)
         {
+            object _lockObj = new object();
+            await Task.Run(() => { 
+                ParallelLoopResult result = Parallel.ForEach(files, file => {
+                    using (MD5 hashtime = MD5.Create())
+                    {
+                        lock (file.LockObj)
+                        {
+                            if (!overwriteExistingChecksum && file.HasChecksum) return;
+                            if (!FileExists(file))
+                            {
+                                lock (_lockObj)
+                                {
+                                    file.Status = FileStatus.FILE_MISSING;
+                                    errorOutput.Add(file);
+                                    return;
+                                }
+                            }
+                            try
+                            {
+                                file.Checksum = hashtime.ComputeHash(new FileStream(file.OriginalPath, FileMode.Open));
+                                
+                            }
+                            catch (UnauthorizedAccessException)
+                            {
+                                AccessError(file);
+                            }
+                        }
+                    }
+                });
+            });
+        }
 
+        public static async Task GenerateChecksums(ICollection<Tuple<FileProps, byte[]>> files, bool overwriteExistingChecksum, ICollection<FileProps> errorOutput)
+        {
+            object _lockObj = new object();
+            await Task.Run(() => {
+                ParallelLoopResult result = Parallel.ForEach(files, file => {
+                    using (MD5 hashtime = MD5.Create())
+                    {
+                        lock (file.Item1.LockObj)
+                        {
+                            if (!overwriteExistingChecksum && file.Item1.HasChecksum) return;
+                            if (!FileExists(file.Item1))
+                            {
+                                lock (_lockObj)
+                                {
+                                    file.Item1.Status = FileStatus.FILE_MISSING;
+                                    errorOutput.Add(file.Item1);
+                                    return;
+                                }
+                            }
+                            try
+                            {
+                                file.Item1.Checksum = hashtime.ComputeHash(file.Item2);
+                            }
+                            catch (UnauthorizedAccessException)
+                            {
+                                AccessError(file.Item1);
+                            }
+                        }
+                    }
+                });
+            });
         }
 
 
@@ -129,6 +198,10 @@ namespace BurnManager
         public static void VerifyFilesExist(FileList files)
         {
 
+        }
+        public static bool FileExists(FileProps file)
+        {
+            return file.OriginalPath == null || File.Exists(file.OriginalPath);
         }
         //Verify the integrity of file and volume relationships, and check for discrepancies
         public static void VerifyDataIntegrity(FileAndDiscData data)
@@ -149,6 +222,10 @@ namespace BurnManager
         }
         //Call to respond to a data error
         public static void DataError(FileStatus status, FileProps file)
+        {
+
+        }
+        public static void AccessError(FileProps file)
         {
 
         }

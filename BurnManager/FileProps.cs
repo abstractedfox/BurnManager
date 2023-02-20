@@ -27,6 +27,15 @@ namespace BurnManager
 
         public readonly object LockObj = new object();
 
+        //Note that this only checks whether the Checksum array is not null & contains more than one member
+        public bool HasChecksum
+        {
+            get
+            {
+                return (Checksum != null && Checksum.Length > 1);
+            }
+        }
+
         
         public FileProps()
         {

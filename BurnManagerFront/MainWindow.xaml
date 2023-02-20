@@ -5,11 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:BurnManagerFront"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <StackPanel>
+        Title="MainWindow" Height="483" Width="800">
+    <Grid Height="auto">
+        <StackPanel Margin="10,10,10,10" Height="auto">
             <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
-                     Margin="20,20,20,20" ItemsSource="{Binding DataContext, ElementName=listBox}">
+                     ItemsSource="{Binding DataContext, ElementName=listBox}"
+                     Margin="20,20,20,20" Height="346">
         
                 <ListBox.ItemTemplate>
                     <DataTemplate>
@@ -22,7 +23,7 @@
                 </ListBox.ItemTemplate>
             
             </ListBox>
-            <Button Content="Button!" Click="AddFiles_ButtonClick"/>
+            <Button Content="Add Files!" Click="AddFiles_ButtonClick"/>
         </StackPanel>
     </Grid>
 </Window>
