@@ -50,40 +50,5 @@ namespace BurnManagerFront
             };
         }
 
-        //Generates checksums for all passed files. Errored files will be returned in errorOutput
-        //Only put this here in case putting it in the same binary as the ui fixed our little permissions problem but it looks like it doesn't
-        public static async Task GenerateChecksums(ICollection<FileProps> files, bool overwriteExistingChecksum, ICollection<FileProps> errorOutput)
-        {
-            object _lockObj = new object();
-            await Task.Run(() => {
-                ParallelLoopResult result = Parallel.ForEach(files, file => {
-                    using (MD5 hashtime = MD5.Create())
-                    {
-                        lock (file.LockObj)
-                        {
-                            if (!overwriteExistingChecksum && file.HasChecksum) return;
-                            if (!BurnManagerAPI.FileExists(file))
-                            {
-                                lock (_lockObj)
-                                {
-                                    file.Status = FileStatus.FILE_MISSING;
-                                    errorOutput.Add(file);
-                                    return;
-                                }
-                            }
-                            try
-                            {
-                                file.Checksum = hashtime.ComputeHash(new FileStream(file.OriginalPath, FileMode.Open));
-
-                            }
-                            catch (UnauthorizedAccessException)
-                            {
-                                Console.WriteLine("AAAAA");
-                            }
-                        }
-                    }
-                });
-            });
-        }
     }
 }

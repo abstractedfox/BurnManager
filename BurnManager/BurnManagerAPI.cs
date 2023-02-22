@@ -144,6 +144,12 @@ namespace BurnManager
                             {
                                 AccessError(file);
                             }
+                            catch (IOException)
+                            {
+                                //Note, this can be thrown if the file is locked by another program but could also be caused if we have
+                                //having fun concurrency issues
+                                AccessError(file);
+                            }
                         }
                     }
                 });

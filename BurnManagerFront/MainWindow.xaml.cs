@@ -47,6 +47,10 @@ namespace BurnManagerFront
             List<FileProps> erroredFiles = new List<FileProps>();
             int count = 0;
 
+            ChecksumFactory hashtime = new ChecksumFactory();
+            hashtime.StartQueue();
+            
+
             foreach (StorageFile file in files)
             {
                 FileProps filePropped = new FileProps(await FrontendFunctions.StorageFileToFileProps(file));
@@ -55,30 +59,17 @@ namespace BurnManagerFront
                 count++;
                 if (count > 100)
                 {
-                    BurnManagerAPI.GenerateChecksums(new List<FileProps>(filesToChecksum), true, erroredFiles);
+                    //BurnManagerAPI.GenerateChecksums(new List<FileProps>(filesToChecksum), true, erroredFiles);
+                    hashtime.AddBatch(filesToChecksum);
                     filesToChecksum.Clear();
+                    count = 0;
                 }
             }
 
-            //await FrontendFunctions.GenerateChecksums(filesToChecksum, true, erroredFiles);
-            await BurnManagerAPI.GenerateChecksums(filesToChecksum, true, erroredFiles);
-            /*
-            List<Tuple<FileProps, byte[]>> items = new List<Tuple<FileProps, byte[]>>();
-            foreach(var file in files)
-            {
-                FileStream stream = new FileStream(file.Path, FileMode.Open);
+            //await BurnManagerAPI.GenerateChecksums(filesToChecksum, true, erroredFiles);
 
-                Tuple<FileProps, byte[]> item = new Tuple<FileProps, byte[]>(new FileProps(), new byte[stream.Length]);
-                
-                //Do this instead of ReadAsync, since ReadAsync is limited to an int32 for the number of bytes to read
-                for (int i = 0; i < stream.Length; i++)
-                {
-                    item.Item2[i] = (byte)stream.ReadByte();
-                }
-                items.Add(item);
-            }
-            */
-            System.Windows.MessageBox.Show("Checky!!!" + filesToChecksum.First().Checksum.ToString());
+            if (filesToChecksum.Count > 0) hashtime.AddBatch(filesToChecksum);
+            hashtime.FinishQueue();
         }
     }
 }
