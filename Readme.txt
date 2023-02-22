@@ -1,3 +1,5 @@
 Burn Manager Redux
 
 This is the rewrite progress of the original Burn Manager (also known as 'DiscDoingsWPF'). That application was left in a working state (and is still available to use) but now that it's there, it could benefit from some better ideas and practices I picked up during and after. The objective this time is to have better separation of concerns (particularly separating platform specific features from program logic), cleaner data structures, and an overall more maintainable codebase. Feel free to observe progress as it comes along.
+
+When completed, it will offer the same feature set as the original Burn Manager: tracking files to be burned to cold storage media (such as Blu Ray discs), organizing them to make efficient use of available space (to reduce the number of volumes needed), and recording a hash of those files for future integrity verification, and in many situations it's expected to be much more performant. This can be a useful part of your backup plan, as burned media is safe from software related corruption, ransomware, and some forms of user error.
