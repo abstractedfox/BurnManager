@@ -1,3 +1,3 @@
 Burn Manager Redux
 
-This is the rewrite progress of the original Burn Manager (also known as 'DiscDoingsWPF'). To see a completed application, you will want to go there, but perhaps you will also see why it's a good idea to do a slightly better one.
+This is the rewrite progress of the original Burn Manager (also known as 'DiscDoingsWPF'). That application was left in a working state (and is still available to use) but now that it's there, it could benefit from some better ideas and practices I picked up during and after. The objective this time is to have better separation of concerns (particularly separating platform specific features from program logic), cleaner data structures, and an overall more maintainable codebase. Feel free to observe progress as it comes along.
