@@ -9,13 +9,18 @@ namespace BurnManager
 {
     public class ChecksumFactory
     {
+        private Task? _queueTask;
+
         private object _lockObj = new object();
         private bool running = false;
-        public bool IsRunning
+        public bool IsComplete
         {
             get
             {
-                return running;
+                lock (_lockObj)
+                {
+                    return _queueTask != null && _queueTask.Status == TaskStatus.RanToCompletion;
+                }
             }
         }
         private bool halt = false;
@@ -36,7 +41,7 @@ namespace BurnManager
         }
 
         //Start processing whatever is in the queue. The batch loop will run regardless of contents until FinishQueue() is called.
-        public async void StartQueue()
+        public async Task StartQueue()
         {
             lock (_lockObj)
             {
@@ -44,7 +49,7 @@ namespace BurnManager
                 running = true;
             }
 
-            await Task.Run(() => { _runBatch(); });
+            await Task.Run(() => { _queueTask = _runBatch(); });
         }
 
         //Call when finished passing new batches. All queued batches will complete, and the batch task will return.
@@ -62,35 +67,34 @@ namespace BurnManager
             halt = true;
         }
 
-        private async void _runBatch()
+        private async Task _runBatch()
         {
             while (running || batches.Count > 0)
             {
                 List<FileProps> thisBatch = new List<FileProps>();
+
+                //Do not block AddBatch by remaining locked while a batch is processing
                 lock (_lockObj)
                 {
                     if (batches.Count > 0)
                     {
-                        thisBatch = new List<FileProps>(batches.Last());
+                        var nextBatch = batches.First();
+                        thisBatch = new List<FileProps>(nextBatch);
+                        batches.RemoveAt(0);
                     }
                     else continue;
                 }
 
-                //Do not block AddBatch by remaining locked while a batch is processing
                 List<FileProps> errorOut = new List<FileProps>();
                 await BurnManagerAPI.GenerateChecksums(thisBatch, true, errorOut);
                 if (errorOut.Count > 0) erroredFiles.Add(errorOut);
-                if (!batches.Remove(thisBatch))
-                {
-                    throw new Exception("Batch collection was modified in an unexpected way");
-                }
                 if (halt)
                 {
                     running = false;
                     break;
                 }
             }
-            Console.WriteLine("breakpoint!");
+
         }
 
 

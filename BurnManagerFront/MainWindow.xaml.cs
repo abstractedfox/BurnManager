@@ -35,7 +35,7 @@ namespace BurnManagerFront
         {
             InitializeComponent();
             api = new BurnManagerAPI();
-            //api.TestState();
+
             DataContext = api.data.AllFiles.Files;
             BindingOperations.EnableCollectionSynchronization(api.data.AllFiles.Files, api.LockObj);
         }
@@ -59,17 +59,16 @@ namespace BurnManagerFront
                 count++;
                 if (count > 100)
                 {
-                    //BurnManagerAPI.GenerateChecksums(new List<FileProps>(filesToChecksum), true, erroredFiles);
                     hashtime.AddBatch(filesToChecksum);
                     filesToChecksum.Clear();
                     count = 0;
                 }
             }
 
-            //await BurnManagerAPI.GenerateChecksums(filesToChecksum, true, erroredFiles);
-
             if (filesToChecksum.Count > 0) hashtime.AddBatch(filesToChecksum);
             hashtime.FinishQueue();
+
+            while (!hashtime.IsComplete) ; //prevent returning until we implement a real event pattern
         }
     }
 }
