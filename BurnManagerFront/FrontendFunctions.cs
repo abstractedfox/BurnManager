@@ -44,11 +44,18 @@ namespace BurnManagerFront
             {
                 FileName = file.DisplayName,
                 OriginalPath = file.Path,
+                SizeInBytes =(await file.GetBasicPropertiesAsync()).Size,
                 LastModified = (await file.GetBasicPropertiesAsync()).DateModified,
                 Status = status,
                 TimeAdded = DateTimeOffset.Now
             };
         }
 
+        public static void OperationsInProgress()
+        {
+            System.Windows.MessageBox.Show("BurnManager is busy, please wait for the current operation to complete.");
+        }
+
+        
     }
 }

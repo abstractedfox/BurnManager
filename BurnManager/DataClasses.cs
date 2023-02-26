@@ -7,6 +7,8 @@ using System.Text.Json;
 
 namespace BurnManager
 {
+    public delegate void CompletionCallback();
+
     public enum HashType
     {
         none,
@@ -27,7 +29,8 @@ namespace BurnManager
         SUCCESSFUL,
         UNSUCCESSFUL,
         NULL_VALUE,
-        INVALID_JSON
+        INVALID_JSON,
+        DUPLICATE
     }
 
     //Used to identify files which are meant to be kept together when algorithmically sorting.
@@ -37,7 +40,7 @@ namespace BurnManager
         public int CollectionID { get; set; } = 0; //0 = not part of a collection
 
         public MonolithicCollection()
-        { 
+        {
         }
 
         public MonolithicCollection(MonolithicCollection copySource)
@@ -82,6 +85,26 @@ namespace BurnManager
         public static bool operator !=(DiscAndBurnStatus? a, DiscAndBurnStatus? b)
         {
             return !(a == b);
+        }
+    }
+
+    //Describes a pending operation
+    public class PendingOperation{
+        public object LockObj = new object();
+        private bool _blocking = false;
+        public bool Blocking
+        {
+            get
+            {
+                return _blocking;
+            }
+        }
+        
+        //isBlocking should be used to track whether this operation should block other operations from starting.
+        //However, blocking must be implemented by the caller
+        public PendingOperation(bool isBlocking)
+        {
+            _blocking = isBlocking;
         }
     }
 }

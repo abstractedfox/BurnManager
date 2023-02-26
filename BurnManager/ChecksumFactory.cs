@@ -10,6 +10,8 @@ namespace BurnManager
     public class ChecksumFactory
     {
         private Task? _queueTask;
+        public delegate void CallWhenComplete();
+        public CompletionCallback? callOnCompletionDelegate { get; set; }
 
         private object _lockObj = new object();
         private bool running = false;
@@ -95,6 +97,10 @@ namespace BurnManager
                 }
             }
 
+            if (callOnCompletionDelegate != null)
+            {
+                callOnCompletionDelegate();
+            }
         }
 
 
