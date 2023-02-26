@@ -11,7 +11,7 @@ using System.IO.IsolatedStorage;
 using System.Security.Principal;
 using System.Security.Cryptography;
 using System.Reflection.Metadata.Ecma335;
-
+using System.Diagnostics;
 
 namespace BurnManager
 {
@@ -89,12 +89,18 @@ namespace BurnManager
 
 
         //===================File and sorting operations
-        public void AddFile(FileProps file)
+        public ResultCode AddFile(FileProps file)
         {
             lock (LockObj)
             {
+                if (data.AllFiles.Where(a => a.OriginalPath == file.OriginalPath).Count() > 0)
+                {
+                    return ResultCode.DUPLICATE;
+                }
+                Debug.WriteLine("boilerplate" + data.AllFiles.TotalSizeInBytes);
                 data.AllFiles.Add(file);
             }
+            return ResultCode.SUCCESSFUL;
         }
         public void NewVolume(ulong sizeInBytes)
         {
@@ -201,6 +207,36 @@ namespace BurnManager
         {
 
         }
+
+        //Verify the existing checksum of a list of files one-by-one. Mostly for making sure there were no sync problems
+        //when generating checksums concurrently
+        public static List<FileProps> VerifyChecksumsSequential(ICollection<FileProps> files)
+        {
+            List<FileProps> erroredFiles = new List<FileProps>();
+            foreach (var file in files)
+            {
+                using (MD5 hashtime = MD5.Create())
+                {
+                    try
+                    {
+                        byte[] compareChecksum = hashtime.ComputeHash(new FileStream(file.OriginalPath, FileMode.Open));
+                        if (!Enumerable.SequenceEqual(compareChecksum, file.Checksum))
+                        {
+                            erroredFiles.Add(file);
+                        }
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        AccessError(file);
+                    }
+                    catch (IOException)
+                    {
+                        AccessError(file);
+                    }
+                }
+            }
+            return erroredFiles;
+        }
         public static void VerifyFilesExist(FileList files)
         {
 
@@ -234,6 +270,12 @@ namespace BurnManager
         public static void AccessError(FileProps file)
         {
 
+        }
+
+        //Remove a pending operation from a list. Mostly useful when wrapped in a delegate as a callback for an asynchronous operation
+        public static bool RemovePendingOperation(ICollection<PendingOperation> Operations, PendingOperation operationToRemove)
+        {
+            return Operations.Remove(operationToRemove);
         }
 
 

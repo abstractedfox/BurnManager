@@ -24,6 +24,7 @@
             
             </ListBox>
             <Button Content="Add Files!" Click="AddFiles_ButtonClick"/>
+            <Button Content="Debug button!" Click="DebugButtonClick"/>
         </StackPanel>
     </Grid>
 </Window>
