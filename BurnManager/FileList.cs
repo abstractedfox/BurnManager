@@ -11,7 +11,9 @@ namespace BurnManager
         public readonly object LockObj = new object();
 
         //private List<FileProps> _files;
-        protected HashSet<FileProps> _files = new HashSet<FileProps>();
+        //protected HashSet<FileProps> _files = new HashSet<FileProps>();
+        protected Dictionary<string, FileProps> _files = new Dictionary<string, FileProps>();
+
         private ulong _totalSizeInBytes;
         public ulong TotalSizeInBytes
         {
@@ -25,7 +27,7 @@ namespace BurnManager
         }
 
         //yes, this is for the json serializer
-        public virtual HashSet<FileProps> Files
+        public virtual Dictionary<String, FileProps> Files
         {
             get
             {
@@ -47,7 +49,12 @@ namespace BurnManager
                     {
                         lock (file.LockObj)
                         {
-                            _files.Add(file);
+                            if (file.OriginalPath == null)
+                            {
+                                file.Status = FileStatus.BAD_DATA;
+                                continue;
+                            }
+                            _files.Add(file.OriginalPath, file);
                         }
                     }
                     _totalSizeInBytes = copySource.TotalSizeInBytes;
@@ -56,7 +63,7 @@ namespace BurnManager
         }
 
         [JsonConstructor]
-        public FileList(HashSet<FileProps> Files, ulong TotalSizeInBytes)
+        public FileList(Dictionary<String, FileProps> Files, ulong TotalSizeInBytes)
         {
             lock (LockObj)
             {
@@ -80,7 +87,7 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    results = (List<FileProps>)_files.Where(file => file.GetPendingBurns().Count() > 0);
+                    results = (List<FileProps>)_files.Where(file => file.Value.GetPendingBurns().Count() > 0);
                 }
             });
             return results;
@@ -94,7 +101,7 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    results = (List<FileProps>)_files.Where(file => FileProps.PartialEquals(file, compareTo)).ToList();
+                    results = (List<FileProps>)_files.Values.Where(file => FileProps.PartialEquals(file, compareTo)).ToList();
                 }
             });
             return results;
@@ -123,10 +130,43 @@ namespace BurnManager
             {
                 lock (item.LockObj)
                 {
-                    _files.Add(item);
-                    if (item.SizeInBytes != null) _totalSizeInBytes += (ulong)item.SizeInBytes;
+                    if (item.OriginalPath == null)
+                    {
+                        item.Status = FileStatus.BAD_DATA;
+                        return;
+                    }
+                    if (_files.TryAdd(item.OriginalPath, item))
+                    {
+                        if (item.SizeInBytes != null) _totalSizeInBytes += (ulong)item.SizeInBytes;
+                    }
+                    else
+                    {
+                        item.Status = FileStatus.DUPLICATE;
+                    }
                 }
             }
+        }
+
+        public virtual ResultCode Add(KeyValuePair<string, FileProps> item)
+        {
+            if (item.Key == null || item.Value == null)
+            {
+                throw new NullReferenceException();
+            }
+            lock (LockObj)
+            {
+                lock (item.Value.LockObj)
+                {
+                    if (item.Value.OriginalPath == null) return ResultCode.NULL_VALUE;
+
+                    if (_files.TryAdd(item.Key, item.Value))
+                    {
+                        if (item.Value.SizeInBytes != null) _totalSizeInBytes += (ulong)item.Value.SizeInBytes;
+                        return ResultCode.SUCCESSFUL;
+                    }
+                }
+            }
+            return ResultCode.UNSUCCESSFUL;
         }
 
         public void Clear()
@@ -142,7 +182,9 @@ namespace BurnManager
         {
             lock (LockObj)
             {
-                return _files.Contains(item);
+                //return _files.Contains(item);
+                if (item.OriginalPath == null) return false;
+                return _files.ContainsKey(item.OriginalPath);
             }
         }
 
@@ -150,15 +192,18 @@ namespace BurnManager
         {
             lock (LockObj)
             {
-                _files.CopyTo(array, arrayIndex);
+                _files.Values.CopyTo(array, arrayIndex);
             }
         }
 
+        //This could be changed to return keys, but aside from keeping compatibility with code that may already expect to receive FileProps
+        //that doesn't seem like it would actually help performance in any way since you'd then need to look up each member by 
+        //key anyway
         public IEnumerator<FileProps> GetEnumerator()
         {
             lock (LockObj)
             {
-                return _files.GetEnumerator();
+                return _files.Values.GetEnumerator();
             }
         }
 
@@ -171,7 +216,8 @@ namespace BurnManager
             {
                 lock (item.LockObj)
                 {
-                    if (_files.Remove(item))
+                    if (item.OriginalPath == null) return false;
+                    if (_files.Remove(item.OriginalPath))
                     {
                         if (item.SizeInBytes != null) _totalSizeInBytes -= (ulong)item.SizeInBytes;
                         return true;
@@ -182,23 +228,33 @@ namespace BurnManager
         }
 
         //The passed collection of VolumeProps will be searched for references to the removed file, removing it from those volumes as well
-        public virtual async Task<bool> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
+        public virtual async Task<ResultCode> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
         {
-            bool operationResult = false;
+            ResultCode operationResult = ResultCode.UNSUCCESSFUL;
             await Task.Run(() =>
             {
                 lock (LockObj)
                 {
                     lock (item.LockObj)
                     {
-                        if (_files.Remove(item))
+                        if (item.OriginalPath == null)
                         {
+                            operationResult = ResultCode.NULL_VALUE;
+                            return;
+                        }
+                        if (_files.Remove(item.OriginalPath))
+                        {
+                            if (item.RelatedVolumes == null)
+                            {
+                                operationResult = ResultCode.SUCCESSFUL;
+                                return;
+                            }
                             foreach (var relationship in item.RelatedVolumes)
                             {
                                 VolumeProps volume = VolumeProps.GetVolumePropsByID(relatedVolumes, relationship.VolumeID).First();
                                 volume.Remove(item);
                             }
-                            operationResult = true;
+                            operationResult = ResultCode.SUCCESSFUL;
                         }
                     }
                 }
@@ -213,7 +269,7 @@ namespace BurnManager
             {
                 foreach (var file in _files)
                 {
-                    if (file.SizeInBytes != null) _totalSizeInBytes += (ulong)file.SizeInBytes;
+                    if (file.Value.SizeInBytes != null) _totalSizeInBytes += (ulong)file.Value.SizeInBytes;
                 }
             }
         }

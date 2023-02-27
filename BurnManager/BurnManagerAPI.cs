@@ -93,11 +93,7 @@ namespace BurnManager
         {
             lock (LockObj)
             {
-                if (data.AllFiles.Where(a => a.OriginalPath == file.OriginalPath).Count() > 0)
-                {
-                    return ResultCode.DUPLICATE;
-                }
-                Debug.WriteLine("boilerplate" + data.AllFiles.TotalSizeInBytes);
+                //Debug.WriteLine("boilerplate" + data.AllFiles.TotalSizeInBytes);
                 data.AllFiles.Add(file);
             }
             return ResultCode.SUCCESSFUL;
@@ -295,8 +291,8 @@ namespace BurnManager
                 Checksum = new byte[] { 1, 1, 1, 1 },
                 FileName = "testPropsA",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.Now,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.Now,
                 OriginalPath = "c:\\testPropsA",
                 SizeInBytes = 500,
                 Status = FileStatus.GOOD
@@ -306,8 +302,8 @@ namespace BurnManager
                 Checksum = new byte[] { 1, 2, 3, 4 },
                 FileName = "testPropsB",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.MinValue,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.MinValue,
                 OriginalPath = "e:\\testPropsB",
                 SizeInBytes = 300,
                 Status = FileStatus.FILE_MISSING
@@ -317,8 +313,8 @@ namespace BurnManager
                 Checksum = new byte[] { 3, 3, 3, 3 },
                 FileName = "testPropsC",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.MaxValue,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.MaxValue,
                 OriginalPath = "e:\\asdf\\testPropsC",
                 SizeInBytes = 600,
                 Status = FileStatus.FILE_MISSING
@@ -328,8 +324,8 @@ namespace BurnManager
                 Checksum = new byte[] { 4, 3, 3, 9, 4, 7, 5, 6 },
                 FileName = "testPropsD",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.MaxValue,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.MaxValue,
                 OriginalPath = "e:\\asdf\\testPropsD",
                 SizeInBytes = 700,
                 Status = FileStatus.FILE_MISSING

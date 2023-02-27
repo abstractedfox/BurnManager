@@ -62,8 +62,8 @@ namespace BurnManager
         }
 
         [JsonConstructor]
-        public FileProps(string? FileName, string? OriginalPath, ulong? SizeInBytes, DateTime? LastModified,
-            List<DiscAndBurnStatus> RelatedVolumes, byte[]? Checksum, HashType? HashAlgUsed, DateTime? TimeAdded,
+        public FileProps(string? FileName, string? OriginalPath, ulong? SizeInBytes, DateTimeOffset? LastModified,
+            List<DiscAndBurnStatus> RelatedVolumes, byte[]? Checksum, HashType? HashAlgUsed, DateTimeOffset? TimeAdded,
             FileStatus? Status, MonolithicCollection Monolithic)
         {
             lock (LockObj) { 

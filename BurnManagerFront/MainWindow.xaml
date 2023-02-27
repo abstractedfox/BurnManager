@@ -7,6 +7,9 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="483" Width="800">
     <Grid Height="auto">
+        <StackPanel Orientation="Horizontal">
+            <Label Content="Total Size:"/>
+        </StackPanel>
         <StackPanel Margin="10,10,10,10" Height="auto">
             <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
                      ItemsSource="{Binding DataContext, ElementName=listBox}"

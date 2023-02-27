@@ -20,7 +20,9 @@ namespace BurnManager
         none,
         GOOD,
         CHECKSUM_ERROR,
-        FILE_MISSING
+        FILE_MISSING,
+        DUPLICATE,
+        BAD_DATA
     }
 
     public enum ResultCode

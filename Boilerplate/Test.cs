@@ -12,10 +12,10 @@ namespace BurnManager
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, World!");
-            //TestDataTypes();
-            //TestAPI();
-            //TestJSONSerializer();
-            //TestJSONSerializerBigger();
+            TestDataTypes();
+            TestAPI();
+            TestJSONSerializer();
+            TestJSONSerializerBigger();
             TestFileListOverride();
             while (true) ; //prevent returning from main if awaited calls cause flow control to continue here
         }
@@ -23,11 +23,11 @@ namespace BurnManager
         static void TestFileListOverride()
         {
             VolumeProps test = new VolumeProps(123456789);
-            FileProps file = new FileProps { SizeInBytes = 200 };
+            FileProps file = new FileProps { SizeInBytes = 200, OriginalPath = "c:\\asdf\\" };
             ObservableFileList a = new ObservableFileList();
             a.Add(file);
             test.Add(file);
-            Console.WriteLine(a.TotalSizeInBytes);
+            Console.WriteLine("This should say 200: " + a.TotalSizeInBytes);
         }
 
         static async Task TestJSONSerializerBigger()
@@ -37,8 +37,8 @@ namespace BurnManager
                 Checksum = new byte[] { 1, 1, 1, 1 },
                 FileName = "testPropsA",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.Now,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.Now,
                 OriginalPath = "c:\\testPropsA",
                 SizeInBytes = 500,
                 Status = FileStatus.GOOD
@@ -48,8 +48,8 @@ namespace BurnManager
                 Checksum = new byte[] { 1, 2, 3, 4 },
                 FileName = "testPropsB",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.MinValue,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.MinValue,
                 OriginalPath = "e:\\testPropsB",
                 SizeInBytes = 300,
                 Status = FileStatus.FILE_MISSING
@@ -59,8 +59,8 @@ namespace BurnManager
                 Checksum = new byte[] { 3, 3, 3, 3 },
                 FileName = "testPropsC",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.MaxValue,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.MaxValue,
                 OriginalPath = "e:\\asdf\\testPropsC",
                 SizeInBytes = 600,
                 Status = FileStatus.FILE_MISSING
@@ -98,7 +98,7 @@ namespace BurnManager
             List<FileProps> testRemove = (List<FileProps>)await data2.AllFiles.GetFilesByPartialMatch(new FileProps { FileName = "testPropsB", RelatedVolumes = null });
             FileProps removeThis = testRemove.First();
             //bool result = data2.AllFiles.Remove(removeThis);
-            bool result = await data2.AllFiles.CascadeRemove(removeThis, data2.AllVolumes);
+            ResultCode result = await data2.AllFiles.CascadeRemove(removeThis, data2.AllVolumes);
 
             VolumeProps comparePropsA = data2.AllVolumes.First();
             VolumeProps comparePropsB = data2.AllVolumes.Last();
@@ -181,7 +181,7 @@ namespace BurnManager
             BurnManagerAPI testData = new BurnManagerAPI();
             await testData.TestState();
 
-            FileAndDiscData compare = new FileAndDiscData(testData.data);
+            ObservableFileAndDiscData compare = new ObservableFileAndDiscData(testData.data);
 
             if (compare == testData.data)
             {
@@ -191,7 +191,7 @@ namespace BurnManager
 
             string jsonString = testData.Serialize();
             ResultCode result = 0;
-            FileAndDiscData deserialized = BurnManagerAPI.JsonToFileAndDiscData(jsonString, ref result);
+            ObservableFileAndDiscData deserialized = new ObservableFileAndDiscData(BurnManagerAPI.JsonToFileAndDiscData(jsonString, ref result));
 
             if (deserialized == testData.data && result == ResultCode.SUCCESSFUL)
             {
@@ -207,8 +207,8 @@ namespace BurnManager
                 Checksum = new byte[] { 1, 1, 1, 1 },
                 FileName = "testPropsA",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.Now,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.Now,
                 OriginalPath = "c:\\testPropsA",
                 SizeInBytes = 500,
                 Status = FileStatus.GOOD
@@ -218,8 +218,8 @@ namespace BurnManager
                 Checksum = new byte[] { 1, 2, 3, 4 },
                 FileName = "testPropsB",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.MinValue,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.MinValue,
                 OriginalPath = "e:\\testPropsB",
                 SizeInBytes = 300,
                 Status = FileStatus.FILE_MISSING
@@ -229,8 +229,8 @@ namespace BurnManager
                 Checksum = new byte[] { 3, 3, 3, 3 },
                 FileName = "testPropsC",
                 HashAlgUsed = HashType.MD5,
-                TimeAdded = DateTime.Now,
-                LastModified = DateTime.MaxValue,
+                TimeAdded = DateTimeOffset.Now,
+                LastModified = DateTimeOffset.MaxValue,
                 OriginalPath = "e:\\asdf\\testPropsC",
                 SizeInBytes = 600,
                 Status = FileStatus.FILE_MISSING

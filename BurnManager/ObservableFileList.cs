@@ -29,7 +29,10 @@ namespace BurnManager
                 lock (item.LockObj)
                 {
                     base.Add(item);
-                    _filesObservable.Add(item);
+                    if (_files.ContainsKey(item.OriginalPath) && item.Status != FileStatus.DUPLICATE)
+                    {
+                        _filesObservable.Add(item);
+                    }
                 }
             }
         }
@@ -52,22 +55,24 @@ namespace BurnManager
             }
         }
 
-        public override async Task<bool> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
+        public override async Task<ResultCode> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
         {
-            bool result = false;
+            ResultCode result = ResultCode.none;
             result = await base.CascadeRemove(item, relatedVolumes);
+            if (result != ResultCode.SUCCESSFUL) return result;
 
             lock (item.LockObj)
             {
-                if (result)
+                if (result == ResultCode.SUCCESSFUL)
                 {
                     lock (LockObj)
                     {
-                        return _filesObservable.Remove(item);
+                        if (_filesObservable.Remove(item)) return ResultCode.SUCCESSFUL;
+                        return ResultCode.UNSUCCESSFUL;
                     }
                 }
             }
-            return false;
+            return result;
         }
     }
 
