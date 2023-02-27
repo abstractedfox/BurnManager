@@ -85,8 +85,14 @@ namespace BurnManager
                         foreach (var relationship in file.RelatedVolumes)
                         {
                             List<VolumeProps> volume = VolumeProps.GetVolumePropsByID(AllVolumes, relationship.VolumeID);
-                            if (volume.Count > 1) throw new InvalidDataException("Multiple volumes found with the same ID.");
-                            if (volume.Count < 1) throw new InvalidDataException("No volumes found with the ID " + relationship.VolumeID);
+                            if (volume.Count > 1)
+                            {
+                                throw new InvalidDataException("Multiple volumes found with the same ID.");
+                            }
+                            if (volume.Count < 1)
+                            {
+                                throw new InvalidDataException("No volumes found with the ID " + relationship.VolumeID);
+                            }
 
                             volume.First().Add(file, true);
                         }
