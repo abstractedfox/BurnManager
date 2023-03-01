@@ -35,38 +35,47 @@ namespace BurnManagerFront
         //note: This is only a container; each long-running operation is responsible for its own PendingOperation, describing
         //whether that operation should block other long-running operations, and removing its PendingOperation
         //when completed
-        private List<PendingOperation> _operationsPending = new List<PendingOperation>();
+        private List<PendingOperation> _pendingOperations = new List<PendingOperation>();
 
         public MainWindow()
         {
             InitializeComponent();
             api = new BurnManagerAPI();
 
-            DataContext = api.data.AllFiles.Files;
+            InitializeCallbacks();
+
+            totalSizeOutput_Name.DataContext = api.data.AllFiles.TotalSizeInBytes;
+            listBox.DataContext = api.data.AllFiles.Files;
             BindingOperations.EnableCollectionSynchronization(api.data.AllFiles.Files, api.LockObj);
+        }
+
+        public void InitializeCallbacks()
+        {
+            UICallback dataCallback = new UICallback
+            {
+                Update = () => {
+                    lock (_lockObj)
+                    {
+                        this.Dispatcher.Invoke(() =>
+                        {
+                            totalSizeOutput_Name.Content = "Total size (bytes): " + api.data.AllFiles.TotalSizeInBytes;
+                            totalCountOutput_Name.Content = "Count: (pending optimization!)";// + api.data.AllFiles.Count;
+                        });
+                    }
+                }
+            };
+
+            api.data.AllFiles.OnUpdate = dataCallback.Callback;
         }
 
         private async void AddFiles_ButtonClick(object sender, RoutedEventArgs e)
         {
-            PendingOperation thisOperation = new PendingOperation(true);
-            lock (_lockObj)
-            {
-                if (_operationsPending.Count > 0)
-                {
-                    FrontendFunctions.OperationsInProgress();
-                    return;
-                }
-                _operationsPending.Add(thisOperation);
-            }
+            PendingOperation? thisOperation = _pushOperation(true, "File Add");
+            if (thisOperation == null) return;
 
             CompletionCallback onComplete = () =>
             {
-                lock (_lockObj)
-                {
-                    if (!_operationsPending.Remove(thisOperation)) {
-                        throw new Exception("Running operation was not registered in _operationsPending");
-                    }
-                }
+                _popOperation(thisOperation);
             };
 
             IReadOnlyList<StorageFile> files = await FrontendFunctions.OpenFilePicker(this);
@@ -103,11 +112,84 @@ namespace BurnManagerFront
             //while (!hashtime.IsComplete) ; //prevent returning until we implement a real event pattern
         }
 
+        private async void RemoveFiles_Button_Click(object sender, RoutedEventArgs e)
+        {
+            PendingOperation? thisOperation = _pushOperation(true, "Remove Files");
+            if (thisOperation == null) return;
 
-        private void DebugButtonClick(object sender, RoutedEventArgs e)
+            var items = listBox.SelectedItems;
+            List<FileProps> readFrom = new List<FileProps>();
+            foreach (FileProps item in items)
+            {
+                readFrom.Add(item);
+            }
+
+            foreach (FileProps item in readFrom)
+            {
+                await api.RemoveFile(item);
+            }
+
+            _popOperation(thisOperation);
+        }
+
+        private void _debugButtonClick(object sender, RoutedEventArgs e)
         {
             List<FileProps> badChecksums = BurnManagerAPI.VerifyChecksumsSequential(api.data.AllFiles);
             System.Windows.MessageBox.Show("Bad checksums result: " + badChecksums.Count);
+        }
+
+        private PendingOperation? _pushOperation(bool isBlocking, string name)
+        {
+            lock (_lockObj)
+            {
+                if (_pendingOperations.Count > 0)
+                {
+                    FrontendFunctions.OperationsInProgressDialog(_pendingOperations);
+                    return null;
+                }
+                PendingOperation operation = new PendingOperation(isBlocking, name);
+                _pendingOperations.Add(operation);
+                return operation;
+            }
+        }
+
+        private void _popOperation(PendingOperation operation)
+        {
+            lock (_lockObj)
+            {
+                if (!_pendingOperations.Remove(operation))
+                {
+                    throw new Exception("Running operation was not registered in _operationsPending");
+                }
+            }
+        }
+    }
+
+
+    public class UICallback
+    {
+        private Action trigger;
+        public Action Callback
+        {
+            get
+            {
+                return trigger;
+            }
+        }
+        public Action? Update
+        {
+            get;
+            set;
+        }
+
+        public UICallback(){
+            trigger = () =>
+            {
+                if (!(Update is null))
+                {
+                    Update();
+                }
+            };
         }
     }
 }

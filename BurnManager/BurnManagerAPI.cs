@@ -102,9 +102,10 @@ namespace BurnManager
         {
 
         }
-        public void RemoveFile(FileProps file)
+        public async Task RemoveFile(FileProps file)
         {
-
+            await data.AllFiles.CascadeRemove(file, data.AllVolumes);
+            Console.WriteLine("boilerplate");
         }
         public void RemoveVolume(VolumeProps volume)
         {

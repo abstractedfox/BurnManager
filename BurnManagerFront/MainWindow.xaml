@@ -5,15 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:BurnManagerFront"
         mc:Ignorable="d"
-        Title="MainWindow" Height="483" Width="800">
+        Title="MainWindow" Height="550" Width="800">
     <Grid Height="auto">
-        <StackPanel Orientation="Horizontal">
-            <Label Content="Total Size:"/>
-        </StackPanel>
+        
         <StackPanel Margin="10,10,10,10" Height="auto">
+            
             <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
                      ItemsSource="{Binding DataContext, ElementName=listBox}"
-                     Margin="20,20,20,20" Height="346">
+                     Margin="20,20,20,20" Height="324" SelectionMode="Extended">
         
                 <ListBox.ItemTemplate>
                     <DataTemplate>
@@ -26,8 +25,24 @@
                 </ListBox.ItemTemplate>
             
             </ListBox>
-            <Button Content="Add Files!" Click="AddFiles_ButtonClick"/>
-            <Button Content="Debug button!" Click="DebugButtonClick"/>
+            <StackPanel Orientation="Horizontal" Margin="10,10,10,10">
+                <Button Content="Add Files!" Click="AddFiles_ButtonClick"
+                        Width="200" Margin="0,0,10,0"/>
+                <Button Content="Remove Selected Files!" Click="RemoveFiles_Button_Click"
+                        Width="200"/>
+            </StackPanel>
+            <Button Content="Debug button!" Click="_debugButtonClick"/>
+            <Label>Meta Info</Label>
+            <StackPanel Orientation="Horizontal">
+                <Label Content="{Binding DataContext, Mode=OneWay, 
+                ElementName=totalCountOutput_Name}"
+                   x:Name="totalCountOutput_Name"/>
+                
+                <Label Content="{Binding DataContext, Mode=OneWay, 
+                ElementName=totalSizeOutput_Name}"
+                   x:Name="totalSizeOutput_Name"/>
+            </StackPanel>
         </StackPanel>
+
     </Grid>
 </Window>
