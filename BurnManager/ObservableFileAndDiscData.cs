@@ -11,7 +11,7 @@ namespace BurnManager
 {
     public class ObservableFileAndDiscData : FileAndDiscData
     {
-        private ObservableFileList _allFiles = new ObservableFileList();
+        private new ObservableFileList _allFiles = new ObservableFileList();
         public new ObservableFileList AllFiles
         {
             get
@@ -31,6 +31,12 @@ namespace BurnManager
 
         public ObservableFileAndDiscData()
         {
+        }
+
+        public virtual void Initialize()
+        {
+            _allFiles.Clear();
+            _allVolumes.Clear();
         }
 
         public ObservableFileAndDiscData(FileAndDiscData data)

@@ -181,9 +181,9 @@ namespace BurnManager
             BurnManagerAPI testData = new BurnManagerAPI();
             await testData.TestState();
 
-            ObservableFileAndDiscData compare = new ObservableFileAndDiscData(testData.data);
+            ObservableFileAndDiscData compare = new ObservableFileAndDiscData(testData.Data);
 
-            if (compare == testData.data)
+            if (compare == testData.Data)
             {
                 Pass("Comparison of copied FileAndDiscData to original FileAndDiscData.");
             }
@@ -193,7 +193,7 @@ namespace BurnManager
             ResultCode result = 0;
             ObservableFileAndDiscData deserialized = new ObservableFileAndDiscData(BurnManagerAPI.JsonToFileAndDiscData(jsonString, ref result));
 
-            if (deserialized == testData.data && result == ResultCode.SUCCESSFUL)
+            if (deserialized == testData.Data && result == ResultCode.SUCCESSFUL)
             {
                 Pass("Deserialize & reserialize");
             }

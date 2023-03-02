@@ -182,7 +182,7 @@ namespace BurnManager
                     if (_files.TryAdd(item.Key, item.Value))
                     {
                         if (item.Value.SizeInBytes != null) _totalSizeInBytesObservable += (ulong)item.Value.SizeInBytes;
-                        return ResultCode.SUCCESSFUL;
+                        return ResultCode.SUCCESSFUL;  
                     }
                 }
             }
@@ -247,14 +247,17 @@ namespace BurnManager
         }
 
         //The passed collection of VolumeProps will be searched for references to the removed file, removing it from those volumes as well
-        public virtual async Task<ResultCode> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
+        //Because relatedVolumes is a collection type with no integrated lock object, a lock object can be passed in arg3
+        public virtual async Task<ResultCode> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes, object? volumeCollectionLockObj)
         {
             ResultCode operationResult = ResultCode.UNSUCCESSFUL;
+            if (volumeCollectionLockObj == null) volumeCollectionLockObj = new object();
+
             await Task.Run(() =>
             {
                 lock (LockObj)
                 {
-                    lock (item.LockObj)
+                    lock (item.LockObj) lock (volumeCollectionLockObj)
                     {
                         if (item.OriginalPath == null)
                         {

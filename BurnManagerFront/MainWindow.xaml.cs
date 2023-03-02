@@ -21,6 +21,7 @@ using System.Windows.Data;
 using Windows.Storage.Pickers;
 using Windows.Devices.Bluetooth.Advertisement;
 using System.IO;
+using Microsoft.Win32;
 
 namespace BurnManagerFront
 {
@@ -44,9 +45,9 @@ namespace BurnManagerFront
 
             InitializeCallbacks();
 
-            totalSizeOutput_Name.DataContext = api.data.AllFiles.TotalSizeInBytes;
-            listBox.DataContext = api.data.AllFiles.Files;
-            BindingOperations.EnableCollectionSynchronization(api.data.AllFiles.Files, api.LockObj);
+            totalSizeOutput_Name.DataContext = api.Data.AllFiles.TotalSizeInBytes;
+            listBox.DataContext = api.Data.AllFiles.Files;
+            BindingOperations.EnableCollectionSynchronization(api.Data.AllFiles.Files, api.LockObj);
         }
 
         public void InitializeCallbacks()
@@ -54,18 +55,21 @@ namespace BurnManagerFront
             UICallback dataCallback = new UICallback
             {
                 Update = () => {
-                    lock (_lockObj)
+                    lock (_lockObj) lock (api.LockObj) lock (api.Data.AllFiles.LockObj)
                     {
+                        //note: can behave erratically if we try to grab data from the api while on the UI thread
+                        ulong totalSizeValue = api.Data.AllFiles.TotalSizeInBytes;
+
                         this.Dispatcher.Invoke(() =>
                         {
-                            totalSizeOutput_Name.Content = "Total size (bytes): " + api.data.AllFiles.TotalSizeInBytes;
+                            totalSizeOutput_Name.Content = "Total size (bytes): " + totalSizeValue;
                             totalCountOutput_Name.Content = "Count: (pending optimization!)";// + api.data.AllFiles.Count;
                         });
                     }
                 }
             };
 
-            api.data.AllFiles.OnUpdate = dataCallback.Callback;
+            api.Data.AllFiles.OnUpdate = dataCallback.Callback;
         }
 
         private async void AddFiles_ButtonClick(object sender, RoutedEventArgs e)
@@ -134,10 +138,11 @@ namespace BurnManagerFront
 
         private void _debugButtonClick(object sender, RoutedEventArgs e)
         {
-            List<FileProps> badChecksums = BurnManagerAPI.VerifyChecksumsSequential(api.data.AllFiles);
-            System.Windows.MessageBox.Show("Bad checksums result: " + badChecksums.Count);
+            _openSaveDialog("asdf!");
         }
 
+        //Push a new operation to _pendingOperations after checking whether a new operation can be added.
+        //If it can't add a new operation, it returns null.
         private PendingOperation? _pushOperation(bool isBlocking, string name)
         {
             lock (_lockObj)
@@ -161,6 +166,90 @@ namespace BurnManagerFront
                 {
                     throw new Exception("Running operation was not registered in _operationsPending");
                 }
+            }
+        }
+        
+        //Incomplete, return to this after save dialog is working
+        private MessageBoxResult _saveChangesDialog()
+        {
+            MessageBoxResult result = System.Windows.MessageBox.Show(
+                "Unsaved changes have been made, backup records could be lost. Do you want to save?", 
+                "BurnManager", MessageBoxButton.YesNoCancel);
+
+            return result;
+        }
+
+        //Open the save dialog and save 'serializedData'. Returns false if the operation fails or if the user cancels
+        private bool _openSaveDialog(string serializedData)
+        {
+            try
+            {
+                Stream aStream;
+                SaveFileDialog saveDialog = new SaveFileDialog();
+
+                saveDialog.Filter = "*." + BurnManagerAPI.Extension + "|All Files(*.*)";
+                saveDialog.DefaultExt = BurnManagerAPI.Extension;
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    if ((aStream = saveDialog.OpenFile()) != null)
+                    {
+                        byte[] toBytes = new byte[serializedData.Length];
+                        for (int i = 0; i < serializedData.Length; i++) toBytes[i] = (byte)serializedData[i];
+
+                        aStream.Write(toBytes);
+                        aStream.Close();
+                        api.UpdateSavedState();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                System.Windows.MessageBox.Show("Exception thrown from _openSaveDialog:\n" + exception);
+            }
+            return false;
+        }
+
+        private void FileNew_MenuClick(object sender, RoutedEventArgs e)
+        {
+            lock (_lockObj)
+            {
+                PendingOperation? thisOperation = _pushOperation(true, "Revert to new file");
+
+                if (thisOperation == null) return;
+                bool a = api.SavedStateAltered;
+                if (api.SavedStateAltered)
+                {
+                    MessageBoxResult result = _saveChangesDialog();
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        if (_openSaveDialog(api.Serialize()))
+                        {
+                            api.Initialize();
+                        }
+                    }
+                    if (result == MessageBoxResult.Cancel) return;
+                }
+
+                api.Initialize();
+
+                bool saved = api.SavedStateAltered;
+                _popOperation(thisOperation);
+            }
+        }
+
+        private void FileSave_MenuClick(object sender, RoutedEventArgs e)
+        {
+            lock (_lockObj)
+            {
+                PendingOperation? thisOperation = _pushOperation(true, "File Save");
+                if (thisOperation == null) return;
+
+                string serialized = api.Serialize();
+                _openSaveDialog(serialized);
+
+                _popOperation(thisOperation);
             }
         }
     }

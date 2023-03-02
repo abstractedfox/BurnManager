@@ -7,7 +7,21 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="550" Width="800">
     <Grid Height="auto">
-        
+        <DockPanel>
+            <Menu DockPanel.Dock="Top">
+                <MenuItem Header="_File">
+                    <MenuItem Header="_New" 
+                                  Click="FileNew_MenuClick"/>
+                    <MenuItem Header="_Open" 
+                                  />
+                    <MenuItem Header="_Save As" 
+                                  Click="FileSave_MenuClick"/>
+                    <Separator />
+                    <MenuItem Header="_Exit" />
+                </MenuItem>
+            </Menu>
+            
+        </DockPanel>
         <StackPanel Margin="10,10,10,10" Height="auto">
             
             <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
