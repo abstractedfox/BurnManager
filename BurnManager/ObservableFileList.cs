@@ -14,6 +14,7 @@ namespace BurnManager
     public class ObservableFileList : FileList
     {
         protected ObservableCollection<FileProps> _filesObservable = new ObservableCollection<FileProps>();
+
         public new ObservableCollection<FileProps> Files
         {
             get
@@ -55,13 +56,21 @@ namespace BurnManager
             }
         }
 
-        public override async Task<ResultCode> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
+        public new void Clear()
+        {
+            base.Clear();
+            _filesObservable.Clear();
+        }
+
+        public override async Task<ResultCode> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes, object? volumeCollectionLockObj)
         {
             ResultCode result = ResultCode.none;
-            result = await base.CascadeRemove(item, relatedVolumes);
+            result = await base.CascadeRemove(item, relatedVolumes, volumeCollectionLockObj);
             if (result != ResultCode.SUCCESSFUL) return result;
 
-            lock (item.LockObj)
+            if (volumeCollectionLockObj == null) volumeCollectionLockObj = new object();
+
+            lock (item.LockObj) lock (volumeCollectionLockObj)
             {
                 if (result == ResultCode.SUCCESSFUL)
                 {

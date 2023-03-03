@@ -32,6 +32,7 @@ namespace BurnManager
 
         static async Task TestJSONSerializerBigger()
         {
+            object _lockObj = new object();
             FileProps testPropsA = new FileProps
             {
                 Checksum = new byte[] { 1, 1, 1, 1 },
@@ -98,7 +99,7 @@ namespace BurnManager
             List<FileProps> testRemove = (List<FileProps>)await data2.AllFiles.GetFilesByPartialMatch(new FileProps { FileName = "testPropsB", RelatedVolumes = null });
             FileProps removeThis = testRemove.First();
             //bool result = data2.AllFiles.Remove(removeThis);
-            ResultCode result = await data2.AllFiles.CascadeRemove(removeThis, data2.AllVolumes);
+            ResultCode result = await data2.AllFiles.CascadeRemove(removeThis, data2.AllVolumes, _lockObj);
 
             VolumeProps comparePropsA = data2.AllVolumes.First();
             VolumeProps comparePropsB = data2.AllVolumes.Last();
@@ -181,9 +182,9 @@ namespace BurnManager
             BurnManagerAPI testData = new BurnManagerAPI();
             await testData.TestState();
 
-            ObservableFileAndDiscData compare = new ObservableFileAndDiscData(testData.data);
+            ObservableFileAndDiscData compare = new ObservableFileAndDiscData(testData.Data);
 
-            if (compare == testData.data)
+            if (compare == testData.Data)
             {
                 Pass("Comparison of copied FileAndDiscData to original FileAndDiscData.");
             }
@@ -193,7 +194,7 @@ namespace BurnManager
             ResultCode result = 0;
             ObservableFileAndDiscData deserialized = new ObservableFileAndDiscData(BurnManagerAPI.JsonToFileAndDiscData(jsonString, ref result));
 
-            if (deserialized == testData.data && result == ResultCode.SUCCESSFUL)
+            if (deserialized == testData.Data && result == ResultCode.SUCCESSFUL)
             {
                 Pass("Deserialize & reserialize");
             }

@@ -71,7 +71,10 @@ namespace BurnManager
 
         private async Task _runBatch()
         {
-            while (running || batches.Count > 0)
+            int batchCount = 0;
+            lock (_lockObj) batchCount = batches.Count;
+
+            while (running || batchCount > 0)
             {
                 List<FileProps> thisBatch = new List<FileProps>();
 
@@ -83,6 +86,7 @@ namespace BurnManager
                         var nextBatch = batches.First();
                         thisBatch = new List<FileProps>(nextBatch);
                         batches.RemoveAt(0);
+                        batchCount = batches.Count;
                     }
                     else continue;
                 }

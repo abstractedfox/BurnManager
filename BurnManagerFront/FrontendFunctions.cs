@@ -51,9 +51,29 @@ namespace BurnManagerFront
             };
         }
 
-        public static void OperationsInProgress()
+        public static void OperationsInProgressDialog()
         {
             System.Windows.MessageBox.Show("BurnManager is busy, please wait for the current operation to complete.");
+        }
+
+        public static void OperationsInProgressDialog(ICollection<PendingOperation> operations)
+        {
+            string output = "BurnManager is busy with the following operations:\n";
+            int length = output.Length;
+            foreach(var item in operations)
+            {
+                if (item.Name != null)
+                {
+                    output += item.Name + "\n";
+                }
+            }
+            if (length == output.Length)
+            {
+                OperationsInProgressDialog();
+                return;
+            }
+
+            System.Windows.MessageBox.Show(output + "\nPlease wait for these operations to complete.");
         }
 
         

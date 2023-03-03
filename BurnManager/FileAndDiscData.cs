@@ -8,7 +8,7 @@ namespace BurnManager
     //Top level struct, this is what contains all the files and volumes we're tracking and what will get passed to the serializer
     public class FileAndDiscData
     {
-        private FileList _allFiles { get; set; } = new FileList();
+        protected FileList _allFiles { get; set; } = new FileList();
         public FileList AllFiles { get
             {
                 return _allFiles;
@@ -39,6 +39,12 @@ namespace BurnManager
         {
             foreach (var file in copySource.AllFiles) AllFiles.Add(file);
             foreach (var volume in copySource.AllVolumes) AllVolumes.Add(volume);
+        }
+
+        public virtual void Initialize()
+        {
+            _allFiles.Clear();
+            _allVolumes.Clear();
         }
 
 

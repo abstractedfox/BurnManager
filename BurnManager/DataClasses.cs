@@ -94,6 +94,7 @@ namespace BurnManager
     public class PendingOperation{
         public object LockObj = new object();
         private bool _blocking = false;
+        public string? Name;
         public bool Blocking
         {
             get
@@ -108,5 +109,12 @@ namespace BurnManager
         {
             _blocking = isBlocking;
         }
+
+        public PendingOperation(bool isBlocking, string name)
+        {
+            _blocking = isBlocking;
+            Name = name;
+        }
     }
+
 }

@@ -18,21 +18,28 @@ namespace BurnManager
     //Most runtime program logic interfaces through this class
     public class BurnManagerAPI
     {
-        public ObservableFileAndDiscData data;
-        public ObservableFileAndDiscData lastSavedState;
+        public ObservableFileAndDiscData Data;
+        private ObservableFileAndDiscData _lastSavedState;
         public object LockObj = new object();
+        public const string Extension = ".burnmanager";
 
         public BurnManagerAPI()
         {
-            data = new ObservableFileAndDiscData();
-            lastSavedState = data;
+            lock (LockObj)
+            {
+                Data = new ObservableFileAndDiscData();
+                UpdateSavedState();
+            }
         }
+
+        //===================Meta features related to this struct
 
         public string Serialize()
         {
-            string jsonString = JsonSerializer.Serialize(data);
+            string jsonString = JsonSerializer.Serialize(Data);
             return jsonString;
         }
+
         //Loads a Json-serialized FileAndDiscData into this instance's 'data' and 'lastSavedState'
         //Only handles loading; does not check whether the saved state has been altered first
         public ResultCode LoadFromJson(string serializedJson)
@@ -43,8 +50,8 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    data = newData;
-                    lastSavedState = data;
+                    Data = newData;
+                    _lastSavedState = new ObservableFileAndDiscData(Data);
                 }
                 return ResultCode.SUCCESSFUL;
             }
@@ -87,6 +94,31 @@ namespace BurnManager
             return newData;
         }
 
+        public bool SavedStateAltered
+        {
+            get
+            {
+                lock (LockObj)
+                {
+                    return Data != _lastSavedState;
+                }
+            }
+        }
+
+        //Update the lastSavedState instance to reflect the current value of 'data'. To be called after saving to a file.
+        public void UpdateSavedState()
+        {
+            lock (LockObj)
+            {
+                _lastSavedState = new ObservableFileAndDiscData(Data);
+            }
+        }
+
+        public void Initialize()
+        {
+            Data.Initialize();
+            UpdateSavedState();
+        }
 
         //===================File and sorting operations
         public ResultCode AddFile(FileProps file)
@@ -94,7 +126,7 @@ namespace BurnManager
             lock (LockObj)
             {
                 //Debug.WriteLine("boilerplate" + data.AllFiles.TotalSizeInBytes);
-                data.AllFiles.Add(file);
+                Data.AllFiles.Add(file);
             }
             return ResultCode.SUCCESSFUL;
         }
@@ -102,9 +134,10 @@ namespace BurnManager
         {
 
         }
-        public void RemoveFile(FileProps file)
+        public async Task RemoveFile(FileProps file)
         {
-
+            await Data.AllFiles.CascadeRemove(file, Data.AllVolumes, LockObj);
+            Console.WriteLine("boilerplate");
         }
         public void RemoveVolume(VolumeProps volume)
         {
@@ -140,6 +173,7 @@ namespace BurnManager
                             try
                             {
                                 file.Checksum = hashtime.ComputeHash(new FileStream(file.OriginalPath, FileMode.Open));
+                                file.HashAlgUsed = HashType.MD5;
                                 
                             }
                             catch (UnauthorizedAccessException)
@@ -336,12 +370,12 @@ namespace BurnManager
             await volPropsA.AddAsync(testPropsB); //300bytes
             await volPropsB.AddAsync(testPropsC);
 
-            data.AllFiles.Add(testPropsA);
-            data.AllFiles.Add(testPropsB);
-            data.AllFiles.Add(testPropsC);
-            data.AllFiles.Add(testPropsD);
-            data.AllVolumes.Add(volPropsA);
-            data.AllVolumes.Add(volPropsB);
+            Data.AllFiles.Add(testPropsA);
+            Data.AllFiles.Add(testPropsB);
+            Data.AllFiles.Add(testPropsC);
+            Data.AllFiles.Add(testPropsD);
+            Data.AllVolumes.Add(volPropsA);
+            Data.AllVolumes.Add(volPropsB);
 
         }
     }

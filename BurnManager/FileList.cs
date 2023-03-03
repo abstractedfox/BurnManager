@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
 namespace BurnManager
@@ -9,12 +11,25 @@ namespace BurnManager
     public class FileList : ICollection<FileProps>
     {
         public readonly object LockObj = new object();
-
-        //private List<FileProps> _files;
-        //protected HashSet<FileProps> _files = new HashSet<FileProps>();
+        public Action? OnUpdate { get; set; }
         protected Dictionary<string, FileProps> _files = new Dictionary<string, FileProps>();
 
-        private ulong _totalSizeInBytes;
+        private ulong _totalSizeInBytesValue;
+        protected ulong _totalSizeInBytes
+        {
+            get
+            {
+                return _totalSizeInBytesValue;
+            }
+            set
+            {
+                lock (LockObj)
+                {
+                    _totalSizeInBytesValue = value;
+                    if (!(OnUpdate is null)) OnUpdate();
+                }
+            }
+        }
         public ulong TotalSizeInBytes
         {
             get
@@ -120,6 +135,7 @@ namespace BurnManager
 
         public bool IsReadOnly => false;
 
+        //Duplicates will not be added, and will have their Status fields set to DUPLICATE
         public virtual void Add(FileProps item)
         {
             if (item == null)
@@ -137,7 +153,10 @@ namespace BurnManager
                     }
                     if (_files.TryAdd(item.OriginalPath, item))
                     {
-                        if (item.SizeInBytes != null) _totalSizeInBytes += (ulong)item.SizeInBytes;
+                        if (item.SizeInBytes != null)
+                        {
+                            _totalSizeInBytes += (ulong)item.SizeInBytes;
+                        }
                     }
                     else
                     {
@@ -162,7 +181,7 @@ namespace BurnManager
                     if (_files.TryAdd(item.Key, item.Value))
                     {
                         if (item.Value.SizeInBytes != null) _totalSizeInBytes += (ulong)item.Value.SizeInBytes;
-                        return ResultCode.SUCCESSFUL;
+                        return ResultCode.SUCCESSFUL;  
                     }
                 }
             }
@@ -182,9 +201,8 @@ namespace BurnManager
         {
             lock (LockObj)
             {
-                //return _files.Contains(item);
                 if (item.OriginalPath == null) return false;
-                return _files.ContainsKey(item.OriginalPath);
+                return _files.ContainsKey(item.OriginalPath) && _files[item.OriginalPath] == item;
             }
         }
 
@@ -228,14 +246,17 @@ namespace BurnManager
         }
 
         //The passed collection of VolumeProps will be searched for references to the removed file, removing it from those volumes as well
-        public virtual async Task<ResultCode> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes)
+        //Because relatedVolumes is a collection type with no integrated lock object, a lock object can be passed in arg3
+        public virtual async Task<ResultCode> CascadeRemove(FileProps item, ICollection<VolumeProps> relatedVolumes, object? volumeCollectionLockObj)
         {
             ResultCode operationResult = ResultCode.UNSUCCESSFUL;
+            if (volumeCollectionLockObj == null) volumeCollectionLockObj = new object();
+
             await Task.Run(() =>
             {
                 lock (LockObj)
                 {
-                    lock (item.LockObj)
+                    lock (item.LockObj) lock (volumeCollectionLockObj)
                     {
                         if (item.OriginalPath == null)
                         {
@@ -244,6 +265,7 @@ namespace BurnManager
                         }
                         if (_files.Remove(item.OriginalPath))
                         {
+                            if (item.SizeInBytes != null) _totalSizeInBytes -= (ulong)item.SizeInBytes;
                             if (item.RelatedVolumes == null)
                             {
                                 operationResult = ResultCode.SUCCESSFUL;
