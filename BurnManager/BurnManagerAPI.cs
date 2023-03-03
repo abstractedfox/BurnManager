@@ -21,7 +21,7 @@ namespace BurnManager
         public ObservableFileAndDiscData Data;
         private ObservableFileAndDiscData _lastSavedState;
         public object LockObj = new object();
-        public const string Extension = "burnmanager";
+        public const string Extension = ".burnmanager";
 
         public BurnManagerAPI()
         {

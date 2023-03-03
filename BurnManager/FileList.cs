@@ -14,19 +14,18 @@ namespace BurnManager
         public Action? OnUpdate { get; set; }
         protected Dictionary<string, FileProps> _files = new Dictionary<string, FileProps>();
 
-        private ulong _totalSizeInBytes;
-        protected ulong _totalSizeInBytesObservable
+        private ulong _totalSizeInBytesValue;
+        protected ulong _totalSizeInBytes
         {
             get
             {
-                return _totalSizeInBytes;
+                return _totalSizeInBytesValue;
             }
             set
             {
                 lock (LockObj)
                 {
-                    _totalSizeInBytes = value;
-
+                    _totalSizeInBytesValue = value;
                     if (!(OnUpdate is null)) OnUpdate();
                 }
             }
@@ -156,7 +155,7 @@ namespace BurnManager
                     {
                         if (item.SizeInBytes != null)
                         {
-                            _totalSizeInBytesObservable += (ulong)item.SizeInBytes;
+                            _totalSizeInBytes += (ulong)item.SizeInBytes;
                         }
                     }
                     else
@@ -181,7 +180,7 @@ namespace BurnManager
 
                     if (_files.TryAdd(item.Key, item.Value))
                     {
-                        if (item.Value.SizeInBytes != null) _totalSizeInBytesObservable += (ulong)item.Value.SizeInBytes;
+                        if (item.Value.SizeInBytes != null) _totalSizeInBytes += (ulong)item.Value.SizeInBytes;
                         return ResultCode.SUCCESSFUL;  
                     }
                 }
@@ -194,7 +193,7 @@ namespace BurnManager
             lock (LockObj)
             {
                 _files.Clear();
-                _totalSizeInBytesObservable = 0;
+                _totalSizeInBytes = 0;
             }
         }
 
@@ -238,7 +237,7 @@ namespace BurnManager
                     if (item.OriginalPath == null) return false;
                     if (_files.Remove(item.OriginalPath))
                     {
-                        if (item.SizeInBytes != null) _totalSizeInBytesObservable -= (ulong)item.SizeInBytes;
+                        if (item.SizeInBytes != null) _totalSizeInBytes -= (ulong)item.SizeInBytes;
                         return true;
                     }
                 }
@@ -266,7 +265,7 @@ namespace BurnManager
                         }
                         if (_files.Remove(item.OriginalPath))
                         {
-                            if (item.SizeInBytes != null) _totalSizeInBytesObservable -= (ulong)item.SizeInBytes;
+                            if (item.SizeInBytes != null) _totalSizeInBytes -= (ulong)item.SizeInBytes;
                             if (item.RelatedVolumes == null)
                             {
                                 operationResult = ResultCode.SUCCESSFUL;

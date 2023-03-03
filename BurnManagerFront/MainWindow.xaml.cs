@@ -43,14 +43,26 @@ namespace BurnManagerFront
             InitializeComponent();
             api = new BurnManagerAPI();
 
-            InitializeCallbacks();
-
-            totalSizeOutput_Name.DataContext = api.Data.AllFiles.TotalSizeInBytes;
-            listBox.DataContext = api.Data.AllFiles.Files;
-            BindingOperations.EnableCollectionSynchronization(api.Data.AllFiles.Files, api.LockObj);
+            _initializeUI();
         }
 
-        public void InitializeCallbacks()
+        private void _initializeUI()
+        {
+            Dispatcher.Invoke(() => {
+                _initializeCallbacks();
+                totalSizeOutput_Name.DataContext = api.Data.AllFiles.TotalSizeInBytes;
+                listBox.DataContext = api.Data.AllFiles.Files;
+                BindingOperations.EnableCollectionSynchronization(api.Data.AllFiles.Files, api.LockObj);
+
+            });
+
+            if (api.Data.AllFiles.OnUpdate != null)
+            {
+                api.Data.AllFiles.OnUpdate();
+            }
+        }
+
+        private void _initializeCallbacks()
         {
             UICallback dataCallback = new UICallback
             {
@@ -187,7 +199,7 @@ namespace BurnManagerFront
                 Stream aStream;
                 SaveFileDialog saveDialog = new SaveFileDialog();
 
-                saveDialog.Filter = "*." + BurnManagerAPI.Extension + "|All Files(*.*)";
+                saveDialog.Filter = "*" + BurnManagerAPI.Extension + "|All Files(*.*)";
                 saveDialog.DefaultExt = BurnManagerAPI.Extension;
 
                 if (saveDialog.ShowDialog() == true)
@@ -211,6 +223,37 @@ namespace BurnManagerFront
             return false;
         }
 
+        private string? _openOpenDialog()
+        {
+            string? output = null;
+            try
+            {
+                Stream aStream;
+                OpenFileDialog openDialog = new OpenFileDialog();
+
+                openDialog.Filter = "*" + BurnManagerAPI.Extension + "|All Files(*.*)";
+                openDialog.DefaultExt = BurnManagerAPI.Extension;
+
+                if (openDialog.ShowDialog() == true)
+                {
+                    if ((aStream = openDialog.OpenFile()) != null)
+                    {
+                        using (StreamReader reader = new StreamReader(aStream))
+                        {
+                            output = reader.ReadToEnd();
+                        }
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                System.Windows.MessageBox.Show("Exception thrown from _openOpenDialog:\n" + exception);
+            }
+            return output;
+        }
+
+
+
         private void FileNew_MenuClick(object sender, RoutedEventArgs e)
         {
             lock (_lockObj)
@@ -229,7 +272,11 @@ namespace BurnManagerFront
                             api.Initialize();
                         }
                     }
-                    if (result == MessageBoxResult.Cancel) return;
+                    if (result == MessageBoxResult.Cancel)
+                    {
+                        _popOperation(thisOperation);
+                        return;
+                    }
                 }
 
                 api.Initialize();
@@ -251,6 +298,50 @@ namespace BurnManagerFront
 
                 _popOperation(thisOperation);
             }
+        }
+
+        private async void FileOpen_MenuClick(object sender, RoutedEventArgs e)
+        {
+            await Task.Run(() => { 
+            lock (_lockObj)
+                {
+                    PendingOperation? thisOperation = _pushOperation(true, "File Open");
+                    if (thisOperation == null) return;
+
+                    if (api.SavedStateAltered)
+                    {
+                        MessageBoxResult result = _saveChangesDialog();
+                        if (result == MessageBoxResult.Yes)
+                        {
+                            if (!_openSaveDialog(api.Serialize()))
+                            {
+                                _popOperation(thisOperation);
+                                return;
+                            }
+                        }
+                        if (result == MessageBoxResult.Cancel)
+                        {
+                            _popOperation(thisOperation);
+                            return;
+                        }
+                    }
+
+                    string? serialized = _openOpenDialog();
+                    if (serialized == null)
+                    {
+                        _popOperation(thisOperation);
+                        return;
+                    }
+
+                    if (api.LoadFromJson(serialized) == ResultCode.SUCCESSFUL)
+                    {
+                        api.UpdateSavedState();
+                        _initializeUI();
+                    }
+
+                    _popOperation(thisOperation);
+                }
+            });
         }
     }
 

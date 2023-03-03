@@ -14,6 +14,7 @@ namespace BurnManager
     public class ObservableFileList : FileList
     {
         protected ObservableCollection<FileProps> _filesObservable = new ObservableCollection<FileProps>();
+
         public new ObservableCollection<FileProps> Files
         {
             get
