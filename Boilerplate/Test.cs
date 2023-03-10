@@ -12,12 +12,44 @@ namespace BurnManager
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, World!");
-            TestDataTypes();
-            TestAPI();
-            TestJSONSerializer();
-            TestJSONSerializerBigger();
-            TestFileListOverride();
+            //TestDataTypes();
+            //TestAPI();
+            //TestJSONSerializer();
+            //TestJSONSerializerBigger();
+            //TestFileListOverride();
+            TestDescendingSort();
             while (true) ; //prevent returning from main if awaited calls cause flow control to continue here
+        }
+
+        static void TestDescendingSort()
+        {
+            FileProps[] props = new FileProps[]
+            {
+                new FileProps{ SizeInBytes = 430 },
+                new FileProps{ SizeInBytes = 600 },
+                new FileProps{ SizeInBytes = 2},
+                new FileProps{ SizeInBytes = 430},
+                new FileProps{ SizeInBytes = 200 },
+                new FileProps {SizeInBytes = 9001 },
+                new FileProps {SizeInBytes = 573},
+                new FileProps {SizeInBytes = 500 },
+                new FileProps {SizeInBytes = 1 }
+            };
+
+            FileProps[] sorted = Sorting.SortBySizeInBytesDescending(props);
+
+            bool success = true;
+            for (int i = 0; i < sorted.Length - 1; i++)
+            {
+                if (sorted[i].SizeInBytes < sorted[i + 1].SizeInBytes)
+                {
+                    success = false;
+                    break;
+                }
+            }
+            if (!success) Fail("SortBySizeInBytesDescending");
+            else Pass("SortBySizeInBytesDescending");
+
         }
 
         static void TestFileListOverride()
