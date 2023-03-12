@@ -21,8 +21,15 @@ namespace BurnManager
         public string Name { get; set; } = "";
         private ulong _capacityInBytes { get; set; }
         private int _timesBurned { get; set; } = 0;
+
         [JsonIgnore]
         public FileList Files { get; } = new FileList();
+
+        public ulong ClusterSize { get; set; } = 0;
+
+        //Offset to track how the FileList's TotalSizeInBytes should be represented as
+        //the 'size on disk' for that pool of files on this volume
+        private ulong _totalSizeInBytesClusterSizeOffset = 0;
 
         public ulong CapacityInBytes { 
             get
@@ -38,11 +45,24 @@ namespace BurnManager
             {
                 lock (LockObj)
                 {
-                    return _capacityInBytes - Files.TotalSizeInBytes;
+                    return (_capacityInBytes + _totalSizeInBytesClusterSizeOffset) - Files.TotalSizeInBytes;
                 }
             }
         }
         public ulong SpaceUsed { 
+            get
+            {
+                lock (LockObj)
+                {
+                    return Files.TotalSizeInBytes + _totalSizeInBytesClusterSizeOffset;
+                }
+            }
+        }
+
+        //Get the sum of the file sizes in the underlying FileList struct without compensation for
+        //cluster size
+        public ulong SpaceUsedByFiles
+        {
             get
             {
                 lock (LockObj)
@@ -122,6 +142,9 @@ namespace BurnManager
                     if (Files.Contains(file)) return;
                     Files.Add(file);
                     file.RelatedVolumes.Add(new DiscAndBurnStatus { IsBurned = false, VolumeID = _identifier });
+
+                    if (file.SizeInBytes != null)
+                        _totalSizeInBytesClusterSizeOffset += (ClusterSizeAdjustment((ulong)file.SizeInBytes) - (ulong)file.SizeInBytes);
                 }
             }
         }
@@ -136,6 +159,10 @@ namespace BurnManager
                 {
                     if (Files.Contains(file)) return;
                     Files.Add(file);
+
+                    if (file.SizeInBytes != null)
+                        _totalSizeInBytesClusterSizeOffset += (ClusterSizeAdjustment((ulong)file.SizeInBytes) - (ulong)file.SizeInBytes);
+
                     if (!skipNewRelationship)
                     {
                         file.RelatedVolumes.Add(new DiscAndBurnStatus { IsBurned = false, VolumeID = _identifier });
@@ -159,7 +186,12 @@ namespace BurnManager
             {
                 lock (file.LockObj)
                 {
-                    if (Files.Remove(file)) return true;
+                    if (Files.Remove(file))
+                    {
+                        if (file.SizeInBytes != null)
+                            _totalSizeInBytesClusterSizeOffset -= (ClusterSizeAdjustment((ulong)file.SizeInBytes) - (ulong)file.SizeInBytes);
+                        return true;
+                    }
                 }
             }
             return false;
@@ -175,6 +207,9 @@ namespace BurnManager
                 {
                     if (Files.Remove(file))
                     {
+                        if (file.SizeInBytes != null)
+                            _totalSizeInBytesClusterSizeOffset -= (ClusterSizeAdjustment((ulong)file.SizeInBytes) - (ulong)file.SizeInBytes);
+
                         DiscAndBurnStatus? thisDisc = file.RelatedVolumes.Where(a => a.VolumeID == _identifier).First();
                         if (thisDisc == null)
                         {
@@ -314,6 +349,7 @@ namespace BurnManager
             return favorite;
         }
 
+
         //Returns all VolumeProps matching 'ID'
         public static List<VolumeProps> GetVolumePropsByID(ICollection<VolumeProps> Source, int ID)
         {
@@ -323,6 +359,11 @@ namespace BurnManager
                 if (volume.Identifier == ID) results.Add(volume);
             }
             return results;
+        }
+
+        public ulong ClusterSizeAdjustment(ulong SizeInBytes)
+        {
+            return SizeInBytes + (SizeInBytes % ClusterSize);
         }
 
         public static bool operator ==(VolumeProps? a, VolumeProps? b)

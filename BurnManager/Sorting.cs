@@ -8,12 +8,14 @@ namespace BurnManager
 {
     public class Sorting
     {
-        public static List<VolumeProps> SortForEfficientDistribution(ICollection<FileProps> files, int clusterSize, 
+        //Distributes files by populating each volume with the biggest file that will fit,
+        //then continues by adding each next file that is closest in size to half the remaining space
+        public static List<VolumeProps> SortForEfficientDistribution(ICollection<FileProps> files, ulong clusterSize, 
             ulong volumeSize, out List<FileProps> erroredFiles)
         {
-            //List<FileProps> sortedFiles = new List<FileProps>(SortBySizeInBytesDescending(files));
             LinkedList<FileProps> sortedFiles = new LinkedList<FileProps>(SortBySizeInBytesDescending(files));
             erroredFiles = new List<FileProps>();
+            List<VolumeProps> results = new List<VolumeProps>();
 
             //Remove any files too big for the volume size
             while (sortedFiles.First.Value.SizeInBytes > volumeSize)
@@ -22,14 +24,48 @@ namespace BurnManager
                 sortedFiles.RemoveFirst();
             }
 
+            LinkedListNode<FileProps> origin = sortedFiles.First;
+
             while (sortedFiles.Count > 0)
             {
                 VolumeProps volume = new VolumeProps(volumeSize);
+                volume.ClusterSize = clusterSize;
                 volume.Add(sortedFiles.First.Value);
                 sortedFiles.RemoveFirst();
 
+                while (sortedFiles.Count > 0 &&
+                    volume.ClusterSizeAdjustment((ulong)sortedFiles.Last.Value.SizeInBytes) <= volume.SpaceRemaining)
+                {
+                    ulong targetSize = (ulong)volume.SpaceRemaining / 2;
+                    //LinkedListNode<FileProps> origin = sortedFiles.First;
 
+                    LinkedListNode<FileProps> nextFile = _findNearestNodeToTargetSize(origin, targetSize);
+
+                    bool outOfSpace = false;
+                    while (volume.ClusterSizeAdjustment((ulong)nextFile.Value.SizeInBytes) > volume.SpaceRemaining)
+                    {
+                        if (nextFile.Next == null)
+                        {
+                            outOfSpace = true;
+                            break;
+                        }
+                        nextFile = nextFile.Next;
+                    }
+                    if (outOfSpace) break;
+
+                    volume.Add(nextFile.Value);
+
+                    if (nextFile.Next != null) origin = nextFile.Next;
+                    else if (nextFile.Previous != null) origin = nextFile.Previous;
+                    else break;
+
+                    sortedFiles.Remove(nextFile);
+                }
+
+                results.Add(volume);
             }
+
+            return results;
         }
 
         public static FileProps[] SortBySizeInBytesDescending(ICollection<FileProps> files)
