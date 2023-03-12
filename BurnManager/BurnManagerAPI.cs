@@ -144,10 +144,28 @@ namespace BurnManager
 
         }
 
-        //Sort files efficiently across the smallest possible number of volumes
-        public void EfficiencySort()
+        //Sorts files in AllFiles to fit efficiently across a list of new VolumeProps,
+        //and replaces the contents of Data.AllVolumes with the new set of VolumeProps.
+        public async Task<List<FileProps>?> EfficiencySort(ulong clusterSize, ulong volumeSize)
         {
+            List<FileProps>? errors = null;
+            await Task.Run(() => { 
+                lock (LockObj)
+                {
+                    List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(Data.AllFiles, clusterSize, volumeSize, out errors);
 
+                    foreach (var volume in Data.AllVolumes)
+                    {
+                        volume.CascadeClear();
+                    }
+                    Data.AllVolumes.Clear();
+
+                    foreach (var item in sorted) Data.AllVolumes.Add(item);
+
+                }
+            });
+
+            return errors;
         }
 
         //Generates checksums for all passed files. Errored files will be returned in errorOutput
@@ -366,6 +384,8 @@ namespace BurnManager
             };
             VolumeProps volPropsA = new VolumeProps(100000000);
             VolumeProps volPropsB = new VolumeProps(987654321);
+            volPropsA.SetIdentifier(1);
+            volPropsB.SetIdentifier(2);
             await volPropsA.AddAsync(testPropsA); //500bytes
             await volPropsA.AddAsync(testPropsB); //300bytes
             await volPropsB.AddAsync(testPropsC);

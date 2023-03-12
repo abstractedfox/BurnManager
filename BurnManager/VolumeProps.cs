@@ -25,7 +25,7 @@ namespace BurnManager
         [JsonIgnore]
         public FileList Files { get; } = new FileList();
 
-        public ulong ClusterSize { get; set; } = 0;
+        public ulong ClusterSize { get; set; } = 1;
 
         //Offset to track how the FileList's TotalSizeInBytes should be represented as
         //the 'size on disk' for that pool of files on this volume
@@ -221,6 +221,19 @@ namespace BurnManager
                 }
             }
             return operationResult;
+        }
+
+        //Remove all FileProps from this VolumeProps, using CascadeRemove to clear relationships
+        public bool CascadeClear()
+        {
+            lock (LockObj)
+            {
+                foreach (var file in Files)
+                {
+                    if (!CascadeRemove(file)) return false;
+                }
+            }
+            return true;
         }
 
         public async Task<bool> RemoveAsync(FileProps file)

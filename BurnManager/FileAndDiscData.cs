@@ -49,6 +49,7 @@ namespace BurnManager
 
 
         //Populate the DiscAndBurnStatus struct in each FileProps that is in _allVolumes
+        //Unused, consider deleting
         public async Task PopulateFileAndDiscRelationships()
         {
             await Task.Run(() =>

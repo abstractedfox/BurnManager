@@ -18,11 +18,13 @@ namespace BurnManager
             List<VolumeProps> results = new List<VolumeProps>();
 
             //Remove any files too big for the volume size
-            while (sortedFiles.First.Value.SizeInBytes > volumeSize)
+            while (sortedFiles.First != null && sortedFiles.First.Value.SizeInBytes > volumeSize)
             {
                 erroredFiles.Add(sortedFiles.First.Value);
                 sortedFiles.RemoveFirst();
             }
+
+            if (sortedFiles.Count == 0) return new List<VolumeProps>();
 
             LinkedListNode<FileProps> origin = sortedFiles.First;
 
@@ -33,13 +35,17 @@ namespace BurnManager
                 volume.Add(sortedFiles.First.Value);
                 sortedFiles.RemoveFirst();
 
+                origin = sortedFiles.First;
+
                 while (sortedFiles.Count > 0 &&
                     volume.ClusterSizeAdjustment((ulong)sortedFiles.Last.Value.SizeInBytes) <= volume.SpaceRemaining)
                 {
+
                     ulong targetSize = (ulong)volume.SpaceRemaining / 2;
                     //LinkedListNode<FileProps> origin = sortedFiles.First;
 
                     LinkedListNode<FileProps> nextFile = _findNearestNodeToTargetSize(origin, targetSize);
+
 
                     bool outOfSpace = false;
                     while (volume.ClusterSizeAdjustment((ulong)nextFile.Value.SizeInBytes) > volume.SpaceRemaining)
@@ -57,7 +63,6 @@ namespace BurnManager
 
                     if (nextFile.Next != null) origin = nextFile.Next;
                     else if (nextFile.Previous != null) origin = nextFile.Previous;
-                    else break;
 
                     sortedFiles.Remove(nextFile);
                 }

@@ -13,12 +13,37 @@ namespace BurnManager
         {
             Console.WriteLine("Hello, World!");
             //TestDataTypes();
-            //TestAPI();
+            ///TestAPI();
             //TestJSONSerializer();
             //TestJSONSerializerBigger();
             //TestFileListOverride();
-            TestDescendingSort();
+            //TestDescendingSort();
+            TestSorting();
             while (true) ; //prevent returning from main if awaited calls cause flow control to continue here
+
+            Console.WriteLine("Plate boiled");
+        }
+
+        static void TestSorting()
+        {
+            Console.WriteLine("boilerplate alert! remember to put in a valid local directory & set a breakpoint at the end");
+            string path = "/Users/chris/Downloads/";
+            string[] paths = Directory.GetFiles(path);
+            FileList files = new FileList();
+
+            foreach (var jawn in paths)
+            {
+                FileInfo file = new FileInfo(jawn);
+                files.Add(new FileProps() { FileName = file.Name, OriginalPath = file.FullName,
+                SizeInBytes = (ulong)file.Length, Status=FileStatus.GOOD, Checksum = new byte[] { 1, 1, 1, 1 }
+                });
+            }
+
+
+            List<FileProps> errors;
+            List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(files, 1, 100000000, out errors);
+
+            Console.WriteLine("breakpoint!");
         }
 
         static void TestDescendingSort()
@@ -225,6 +250,7 @@ namespace BurnManager
             string jsonString = testData.Serialize();
             ResultCode result = 0;
             ObservableFileAndDiscData deserialized = new ObservableFileAndDiscData(BurnManagerAPI.JsonToFileAndDiscData(jsonString, ref result));
+            await deserialized.PopulateVolumes();
 
             if (deserialized == testData.Data && result == ResultCode.SUCCESSFUL)
             {
