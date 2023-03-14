@@ -45,17 +45,21 @@ namespace BurnManager
         public ResultCode LoadFromJson(string serializedJson)
         {
             ResultCode operationResult = 0;
-            ObservableFileAndDiscData newData = new ObservableFileAndDiscData(JsonToFileAndDiscData(serializedJson, ref operationResult));
-            if (operationResult == ResultCode.SUCCESSFUL)
-            {
-                lock (LockObj)
+            //await Task.Run(() => { 
+                ObservableFileAndDiscData newData = new ObservableFileAndDiscData(JsonToFileAndDiscData(serializedJson, ref operationResult));
+                if (operationResult == ResultCode.SUCCESSFUL)
                 {
-                    Data = newData;
-                    _lastSavedState = new ObservableFileAndDiscData(Data);
+                    lock (LockObj)
+                    {
+                        Data = newData;
+                        Data.PopulateVolumes();
+                        _lastSavedState = new ObservableFileAndDiscData(Data);
+                    }
+                    operationResult = ResultCode.SUCCESSFUL;
                 }
-                return ResultCode.SUCCESSFUL;
-            }
-            else return operationResult;
+                else operationResult = ResultCode.UNSUCCESSFUL;
+            //});
+            return operationResult;
         }
 
         //Returns a new FileAndDiscData from a JSON string. Passed ResultCode in arg2 is used to return the result of the operation

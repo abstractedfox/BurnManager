@@ -31,6 +31,8 @@ namespace BurnManager
             while (sortedFiles.Count > 0)
             {
                 VolumeProps volume = new VolumeProps(volumeSize);
+                volume.SetIdentifier(VolumeProps.GetNewID(results));
+
                 volume.ClusterSize = clusterSize;
                 volume.Add(sortedFiles.First.Value);
                 sortedFiles.RemoveFirst();

@@ -51,7 +51,7 @@ namespace BurnManager
             foreach (var volume in data.AllVolumes) _allVolumes.Add(new VolumeProps(volume));
         }
 
-        public new async Task PopulateVolumes()
+        public new void PopulateVolumes()
         {
             Func<int, bool> volumeExists = volID =>
             {
@@ -62,7 +62,7 @@ namespace BurnManager
                 return false;
             };
 
-            await Task.Run(() => {
+            //await Task.Run(() => {
                 lock (LockObj)
                 {
                     foreach (var file in AllFiles)
@@ -83,7 +83,7 @@ namespace BurnManager
                         }
                     }
                 }
-            });
+            //});
         }
 
         public static bool operator ==(ObservableFileAndDiscData? a, ObservableFileAndDiscData? b)

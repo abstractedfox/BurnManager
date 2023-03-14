@@ -127,7 +127,6 @@ namespace BurnManagerFront
             if (filesToChecksum.Count > 0) hashtime.AddBatch(filesToChecksum);
             hashtime.FinishQueue();
 
-            //while (!hashtime.IsComplete) ; //prevent returning until we implement a real event pattern
         }
 
         private async void RemoveFiles_Button_Click(object sender, RoutedEventArgs e)
@@ -326,7 +325,7 @@ namespace BurnManagerFront
         private async void FileOpen_MenuClick(object sender, RoutedEventArgs e)
         {
             await Task.Run(() => { 
-            lock (_lockObj)
+                lock (_lockObj)
                 {
                     PendingOperation? thisOperation = _pushOperation(true, "File Open");
                     if (thisOperation == null) return;

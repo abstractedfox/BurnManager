@@ -171,6 +171,7 @@ namespace BurnManager
             }
         }
 
+        //Deletion candidate, seems kind of unnecessary
         public async Task AddAsync(FileProps file)
         {
             await Task.Run(() =>

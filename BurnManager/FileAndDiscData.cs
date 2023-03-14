@@ -49,11 +49,11 @@ namespace BurnManager
 
 
         //Populate the DiscAndBurnStatus struct in each FileProps that is in _allVolumes
-        //Unused, consider deleting
-        public async Task PopulateFileAndDiscRelationships()
+        //Unused, deletion candidate
+        public void PopulateFileAndDiscRelationships()
         {
-            await Task.Run(() =>
-            {
+            //await Task.Run(() =>
+            //{
                 lock (LockObj)
                 {
                     foreach (var volume in _allVolumes)
@@ -68,12 +68,12 @@ namespace BurnManager
                         }
                     }
                 }
-            });
+            //});
         }
 
         //Generate all VolumeProps referenced by the RelatedVolumes struct of each file
         //Because the json serializer doesn't preserve C# references, this must be run after deserialization to rebuild volumes
-        public async Task PopulateVolumes()
+        public void PopulateVolumes()
         {
             Func<int, bool> volumeExists = volID =>
             {
@@ -84,7 +84,7 @@ namespace BurnManager
                 return false;
             };
 
-            await Task.Run(() => {
+            //await Task.Run(() => {
                 lock (LockObj)
                 {
                     foreach (var file in AllFiles)
@@ -105,7 +105,7 @@ namespace BurnManager
                         }
                     }
                 }
-            });
+            //});
         }
 
         public static bool operator ==(FileAndDiscData? a, FileAndDiscData? b)
