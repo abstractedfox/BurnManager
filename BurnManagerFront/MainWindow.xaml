@@ -5,8 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:BurnManagerFront"
         mc:Ignorable="d"
-        Title="MainWindow" Height="550" Width="800">
+        Title="MainWindow" Height="602" Width="800">
     <Grid Height="auto">
+        <StackPanel>
         <DockPanel>
             <Menu DockPanel.Dock="Top">
                 <MenuItem Header="_File">
@@ -22,41 +23,81 @@
             </Menu>
             
         </DockPanel>
-        <StackPanel Margin="10,10,10,10" Height="auto">
+        <TabControl>
+            <TabItem Header="File View">
+                <StackPanel Margin="10,10,10,10" Height="auto">
             
-            <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
-                     ItemsSource="{Binding DataContext, ElementName=listBox}"
-                     Margin="20,20,20,20" Height="324" SelectionMode="Extended">
+                    <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
+                             ItemsSource="{Binding DataContext, ElementName=listBox}"
+                             Margin="20,20,20,20" Height="324" SelectionMode="Extended">
         
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel>
-                            <TextBlock Text="{Binding Path=FileName}" />
-                            <TextBlock Text="{Binding Path=OriginalPath}" />
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Path=FileName}" />
+                                    <TextBlock Text="{Binding Path=OriginalPath}" />
                         
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
             
-            </ListBox>
-            <StackPanel Orientation="Horizontal" Margin="10,10,10,10">
-                <Button Content="Add Files!" Click="AddFiles_ButtonClick"
-                        Width="200" Margin="0,0,10,0"/>
-                <Button Content="Remove Selected Files!" Click="RemoveFiles_Button_Click"
-                        Width="200"/>
-            </StackPanel>
-            <Button Content="Debug button!" Click="_debugButtonClick"/>
-            <Label>Meta Info</Label>
-            <StackPanel Orientation="Horizontal">
-                <Label Content="{Binding DataContext, Mode=OneWay, 
-                ElementName=totalCountOutput_Name}"
-                   x:Name="totalCountOutput_Name"/>
+                    </ListBox>
+                        <StackPanel Orientation="Horizontal" Margin="10,10,10,10">
+                            <Button Content="Add Files!" Click="AddFiles_ButtonClick"
+                                Width="200" Margin="0,0,10,0"/>
+                            <Button Content="Remove Selected Files!" Click="RemoveFiles_Button_Click"
+                                Width="200"/>
+                        </StackPanel>
+                        <Button Content="Verify Checksums" Click="VerifyChecksums_ButtonClick"/>
+                        <Button Content="Debug button!" Click="_debugButtonClick"/>
+                    <Label>Meta Info</Label>
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="{Binding DataContext, Mode=OneWay, 
+                        ElementName=totalCountOutput_Name}"
+                           x:Name="totalCountOutput_Name"/>
                 
-                <Label Content="{Binding DataContext, Mode=OneWay, 
-                ElementName=totalSizeOutput_Name}"
-                   x:Name="totalSizeOutput_Name"/>
-            </StackPanel>
-        </StackPanel>
+                        <Label Content="{Binding DataContext, Mode=OneWay, 
+                        ElementName=totalSizeOutput_Name}"
+                           x:Name="totalSizeOutput_Name"/>
+                    </StackPanel>
+                </StackPanel>
+                
+            </TabItem>
 
+            <TabItem Header="Burns">
+                <StackPanel>
+                    <ListBox x:Name="burnListBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
+                                 ItemsSource="{Binding DataContext, ElementName=burnListBox}"
+                                 Margin="20,20,20,20" Height="324" SelectionMode="Extended">
+
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Path=Name}" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Path=CapacityInBytes}" />
+                                        <TextBlock Text=" bytes, "/>
+                                        <TextBlock Text="{Binding Path=SpaceUsed}" />
+                                        <TextBlock Text=" used, "/>
+                                        <TextBlock Text="{Binding Path=SpaceRemaining}" />
+                                        <TextBlock Text=" remaining."/>
+
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+
+                    </ListBox>
+                    <StackPanel Orientation="Horizontal">
+                        <Label>Volume Size (bytes): </Label>
+                        <TextBox Width="120" Name="VolumeSizeInput"></TextBox>
+                        <Label>Cluster Size (bytes):</Label>
+                        <TextBox Width="120" Name="BlockSizeInput"></TextBox>
+                    </StackPanel>
+                    <Button Content="Generate Burns!" Click="GenerateBurns_ButtonClick"></Button>
+                    </StackPanel>
+            </TabItem>
+        </TabControl>
+        </StackPanel>
     </Grid>
 </Window>

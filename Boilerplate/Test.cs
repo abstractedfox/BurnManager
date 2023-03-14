@@ -27,7 +27,9 @@ namespace BurnManager
         static void TestSorting()
         {
             Console.WriteLine("boilerplate alert! remember to put in a valid local directory & set a breakpoint at the end");
-            string path = "/Users/chris/Downloads/";
+            string path = "\\\\CHRISSERVER\\Data\\Etc\\buildings and spaces";
+            path = "C:\\Users\\coldc\\Downloads";
+            //path = "\\\\CHRISSERVER\\Data\\Etc\\Downloaded items\\furries";
             string[] paths = Directory.GetFiles(path);
             FileList files = new FileList();
 
@@ -41,7 +43,7 @@ namespace BurnManager
 
 
             List<FileProps> errors;
-            List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(files, 1, 100000000, out errors);
+            List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(files, 4096, 8000000000, out errors);
 
             Console.WriteLine("breakpoint!");
         }

@@ -146,9 +146,9 @@ namespace BurnManager
 
         //Sorts files in AllFiles to fit efficiently across a list of new VolumeProps,
         //and replaces the contents of Data.AllVolumes with the new set of VolumeProps.
-        public async Task<List<FileProps>?> EfficiencySort(ulong clusterSize, ulong volumeSize)
+        public async Task<List<FileProps>> EfficiencySort(ulong clusterSize, ulong volumeSize)
         {
-            List<FileProps>? errors = null;
+            List<FileProps> errors = new List<FileProps>();
             await Task.Run(() => { 
                 lock (LockObj)
                 {
@@ -178,6 +178,7 @@ namespace BurnManager
                     {
                         lock (file.LockObj)
                         {
+
                             if (!overwriteExistingChecksum && file.HasChecksum) return;
                             if (!FileExists(file))
                             {
@@ -197,12 +198,16 @@ namespace BurnManager
                             catch (UnauthorizedAccessException)
                             {
                                 AccessError(file);
+                                file.Status = FileStatus.ACCESS_ERROR;
+                                errorOutput.Add(file);
                             }
                             catch (IOException)
                             {
                                 //Note, this can be thrown if the file is locked by another program but could also be caused if we have
                                 //having fun concurrency issues
                                 AccessError(file);
+                                file.Status = FileStatus.ACCESS_ERROR;
+                                errorOutput.Add(file);
                             }
                         }
                     }
@@ -248,10 +253,6 @@ namespace BurnManager
 
         //Perform all verifications on the list of passed files
         public static void VerifyFiles(FileList files)
-        {
-
-        }
-        public static void VerifyChecksums(FileList files)
         {
 
         }
@@ -386,6 +387,8 @@ namespace BurnManager
             VolumeProps volPropsB = new VolumeProps(987654321);
             volPropsA.SetIdentifier(1);
             volPropsB.SetIdentifier(2);
+            volPropsA.Name = "volPropsA";
+            volPropsB.Name = "volPropsB";
             await volPropsA.AddAsync(testPropsA); //500bytes
             await volPropsA.AddAsync(testPropsB); //300bytes
             await volPropsB.AddAsync(testPropsC);

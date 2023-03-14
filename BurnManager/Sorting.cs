@@ -116,7 +116,7 @@ namespace BurnManager
             //traverse toward 0
             while (currentNode.Previous != null)
             {
-                ulong compareDifference = _ulongAbsoluteDifference(targetSize, (ulong)favorite.Previous.Value.SizeInBytes);
+                ulong compareDifference = _ulongAbsoluteDifference(targetSize, (ulong)currentNode.Previous.Value.SizeInBytes);
                 if (compareDifference <= favoriteDifference)
                 {
                     currentNode = currentNode.Previous;
@@ -130,7 +130,7 @@ namespace BurnManager
             currentNode = origin;
             while (currentNode.Next != null)
             {
-                ulong compareDifference = _ulongAbsoluteDifference(targetSize, (ulong)favorite.Next.Value.SizeInBytes);
+                ulong compareDifference = _ulongAbsoluteDifference(targetSize, (ulong)currentNode.Next.Value.SizeInBytes);
                 if (compareDifference <= favoriteDifference)
                 {
                     currentNode = currentNode.Next;
