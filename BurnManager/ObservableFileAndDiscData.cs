@@ -51,6 +51,41 @@ namespace BurnManager
             foreach (var volume in data.AllVolumes) _allVolumes.Add(new VolumeProps(volume));
         }
 
+        public new void PopulateVolumes()
+        {
+            Func<int, bool> volumeExists = volID =>
+            {
+                foreach (var volume in _allVolumes)
+                {
+                    if (volume.Identifier == volID) return true;
+                }
+                return false;
+            };
+
+            //await Task.Run(() => {
+                lock (LockObj)
+                {
+                    foreach (var file in AllFiles)
+                    {
+                        foreach (var relationship in file.RelatedVolumes)
+                        {
+                            List<VolumeProps> volume = VolumeProps.GetVolumePropsByID(AllVolumes, relationship.VolumeID);
+                            if (volume.Count > 1)
+                            {
+                                throw new InvalidDataException("Multiple volumes found with the same ID.");
+                            }
+                            if (volume.Count < 1)
+                            {
+                                throw new InvalidDataException("No volumes found with the ID " + relationship.VolumeID);
+                            }
+
+                            volume.First().Add(file, true);
+                        }
+                    }
+                }
+            //});
+        }
+
         public static bool operator ==(ObservableFileAndDiscData? a, ObservableFileAndDiscData? b)
         {
             if (a is null && !(b is null) || !(a is null) && b is null) return false;

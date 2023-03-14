@@ -73,8 +73,15 @@ namespace BurnManager
         {
             int batchCount = 0;
             lock (_lockObj) batchCount = batches.Count;
+            Func<bool> loopCondition = () =>
+            {
+                lock (_lockObj)
+                {
+                    return running || batches.Count > 0;
+                }
+            };
 
-            while (running || batchCount > 0)
+            while (loopCondition())
             {
                 List<FileProps> thisBatch = new List<FileProps>();
 
@@ -98,6 +105,11 @@ namespace BurnManager
                 {
                     running = false;
                     break;
+                }
+
+                if (batches.Count == 0 && running == false)
+                {
+                    Console.WriteLine("boilerplate"); 
                 }
             }
 

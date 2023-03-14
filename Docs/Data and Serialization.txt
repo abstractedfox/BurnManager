@@ -1,0 +1,27 @@
+First, here are the major data and collection types:
+
+FileProps: Short for "File Properties", this represents one file. Each one has a public LockObj that should be used whenever a FileProps is read, and internal operations with its own functions are atomic. Most properties are nullable, this is to make it possible to compare FileProps using the FileProps.PartialEqual function to an instance that only has the desired fields filled in. Each FileProps contains a list of 'RelatedVolumes' structs (more on this relational model below).
+
+VolumeProps: Short for "Volume Properties", this represents a single volume, tracks its properties (such as capacity, cluster size, space occupied, and space free), and all FileProps associated with it using a FileList (see below). This also has a public LockObj to be used when reading its contents, and all internal operations to this class are atomic.
+Always choose appropriately between VolumeProps.Add(FileProps file) and VolumeProps.Add(FileProps file, bool skipNewRelationship), as well as VolumeProps.Remove and VolumeProps.CascadeRemove as these will have important effects on the data relationships.
+When added to an instance of FileAndDiscData, each VolumeProps is meant to have a unique ID in its _identifier property. A delegate can be assigned which would assign one, but the class also contains a static method that would find a unique ID for a collection of VolumeProps.
+
+FileList: A collection type for FileProps; implements ICollection. This extends the utility of a built-in collection type (currently a Dictionary) with some useful features: A public lock object, an optional OnUpdate delegate that can be set by the caller, tracking the total size of the files represented, and others. Internal operations are atomic. As with VolumeProps, be particular about whether to use FileList.Remove or FileList.CascadeRemove.
+
+FileAndDiscData: A simple struct for tracking a FileList and a List<VolumeProps> together. This is what gets used to track the main store of files and volumes that concern the user.
+
+ObservableFileAndDiscData: An extension of FileAndDiscData that uses Observable types for data binding in WPF.
+
+DiscAndBurnStatus: The data type used by the 'RelatedVolumes' property in FileProps. This represents a single relationship between a FileProps and a VolumeProps, containing the integer ID of the related VolumeProps and a boolean that should indicate whether it has been burned.
+
+Info on the data relational model (tl;dr at bottom):
+At runtime, a FileProps 'knows' which VolumeProps it belongs to based on the DiscAndBurnStatus objects in its RelatedVolumes field. A VolumeProps 'knows' which FileProps it contains, as its internal FileList collection contains references to these FileProps. The implementation can resolve these volumes from IDs using the static function VolumeProps.GetVolumePropsByID, passing a collection of VolumeProps and the desired ID.
+
+Because these classes are designed somewhat generically, they do not consider on their own whether they are part of the 'main' file store (ie the FileAndDiscData instance that the user cares about), a boilerplate unit test, or an instance to be disposed of after a method returns. For that reason, it's important to choose the correct Add and Remove functions when dealing with a FileProps or VolumeProps.
+
+Serialization and deserialization:
+There are two problems that need to be considered when using the JSON serializer. One is that cyclical references do not work; type A referencing type B referencing type C referencing type A will crash the serializer. The other is that C# references are not preserved when serializing; one FileProps referenced in two FileLists becomes two FileProps containing identical data when deserialized.
+When we serialize a FileAndDiscData, the _allFiles FileList gets serialized, and every FileProps gets serialized. VolumeProps instances get serialized, but their contents do not. When a FileAndDiscData is first deserialized, the AllVolumes collection is put in place, and the VolumeProps tracked within will have their names and identifiers but no files.
+After deserialization, it's necessary to call FileAndDiscData.PopulateVolumes() to repopulate the volumes. This will repopulate the contents of each VolumeProps using the VolumeID properties of the RelatedVolumes struct in each FileProps. Most crucially, this reestablishes C# references and the integrity of the data relational model; if the VolumeProps were serialized and deserialized in full, data relationships would be completely broken on deserialization.
+
+Tl;dr: Relational data model uses non-cyclical data relationships, using C# references to track FileProps in each VolumeProps, but integer IDs (which must be resolved at runtime) for each FileProps to track which VolumeProps it belongs to. When serializing, everything but the contents of the VolumeProps is serialized (ie the JSON output will only contain a single list of all files) and at deserialization, the contents of each VolumeProps is dynamically reconstructed by calling FileAndDiscData.PopulateVolumes(), preserving C# references and preventing disaster.

@@ -12,12 +12,71 @@ namespace BurnManager
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, World!");
-            TestDataTypes();
-            TestAPI();
-            TestJSONSerializer();
-            TestJSONSerializerBigger();
-            TestFileListOverride();
+            //TestDataTypes();
+            ///TestAPI();
+            //TestJSONSerializer();
+            //TestJSONSerializerBigger();
+            //TestFileListOverride();
+            //TestDescendingSort();
+            TestSorting();
             while (true) ; //prevent returning from main if awaited calls cause flow control to continue here
+
+            Console.WriteLine("Plate boiled");
+        }
+
+        static void TestSorting()
+        {
+            Console.WriteLine("boilerplate alert! remember to put in a valid local directory & set a breakpoint at the end");
+            string path = "\\\\CHRISSERVER\\Data\\Etc\\buildings and spaces";
+            path = "C:\\Users\\coldc\\Downloads";
+            //path = "\\\\CHRISSERVER\\Data\\Etc\\Downloaded items\\furries";
+            string[] paths = Directory.GetFiles(path);
+            FileList files = new FileList();
+
+            foreach (var jawn in paths)
+            {
+                FileInfo file = new FileInfo(jawn);
+                files.Add(new FileProps() { FileName = file.Name, OriginalPath = file.FullName,
+                SizeInBytes = (ulong)file.Length, Status=FileStatus.GOOD, Checksum = new byte[] { 1, 1, 1, 1 }
+                });
+            }
+
+
+            List<FileProps> errors;
+            List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(files, 4096, 8000000000, out errors);
+
+            Console.WriteLine("breakpoint!");
+        }
+
+        static void TestDescendingSort()
+        {
+            FileProps[] props = new FileProps[]
+            {
+                new FileProps{ SizeInBytes = 430 },
+                new FileProps{ SizeInBytes = 600 },
+                new FileProps{ SizeInBytes = 2},
+                new FileProps{ SizeInBytes = 430},
+                new FileProps{ SizeInBytes = 200 },
+                new FileProps {SizeInBytes = 9001 },
+                new FileProps {SizeInBytes = 573},
+                new FileProps {SizeInBytes = 500 },
+                new FileProps {SizeInBytes = 1 }
+            };
+
+            FileProps[] sorted = Sorting.SortBySizeInBytesDescending(props);
+
+            bool success = true;
+            for (int i = 0; i < sorted.Length - 1; i++)
+            {
+                if (sorted[i].SizeInBytes < sorted[i + 1].SizeInBytes)
+                {
+                    success = false;
+                    break;
+                }
+            }
+            if (!success) Fail("SortBySizeInBytesDescending");
+            else Pass("SortBySizeInBytesDescending");
+
         }
 
         static void TestFileListOverride()
@@ -193,6 +252,7 @@ namespace BurnManager
             string jsonString = testData.Serialize();
             ResultCode result = 0;
             ObservableFileAndDiscData deserialized = new ObservableFileAndDiscData(BurnManagerAPI.JsonToFileAndDiscData(jsonString, ref result));
+            await deserialized.PopulateVolumes();
 
             if (deserialized == testData.Data && result == ResultCode.SUCCESSFUL)
             {

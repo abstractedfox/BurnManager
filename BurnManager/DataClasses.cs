@@ -22,7 +22,8 @@ namespace BurnManager
         CHECKSUM_ERROR,
         FILE_MISSING,
         DUPLICATE,
-        BAD_DATA
+        BAD_DATA,
+        ACCESS_ERROR
     }
 
     public enum ResultCode

@@ -83,43 +83,49 @@ namespace BurnManager
         //If any DiscAndBurnStatus in AssociatedVolumes has IsBurned set to false, return them. Returns an empty collection if there are none.
         public ICollection<DiscAndBurnStatus> GetPendingBurns()
         {
-            return RelatedVolumes.Where(vol => vol.IsBurned == false).ToList();
+            lock (LockObj)
+            {
+                return RelatedVolumes.Where(vol => vol.IsBurned == false).ToList();
+            }
         }
 
         //Only compares properties that are not null. Use this to check equality only for desired properties.
         public static bool PartialEquals(FileProps a, FileProps b)
         {
-            if (a == null || b == null) return false;
-
-            if (!(a.RelatedVolumes is null ^ b.RelatedVolumes is null))
+            lock (a.LockObj) lock (b.LockObj)
             {
-                foreach (DiscAndBurnStatus relationshipA in a.RelatedVolumes)
-                {
-                    bool result = false;
-                    foreach (DiscAndBurnStatus relationshipB in b.RelatedVolumes)
-                    {
-                        if (relationshipA == relationshipB)
-                        {
-                            result = true;
-                            break;
-                        }
-                    }
-                    if (!result) return false;
-                }
-            }
+                if (a == null || b == null) return false;
 
-            //thought: this could also be a huge boolean expression, but do we want a huge boolean expression?
-            if (a.FileName != null && b.FileName != null && a.FileName != b.FileName) return false;
-            if (a.OriginalPath != null && b.OriginalPath != null && a.OriginalPath != b.OriginalPath) return false;
-            if (a.SizeInBytes != null && b.SizeInBytes != null && a.SizeInBytes != b.SizeInBytes) return false;
-            if (a.LastModified != null && b.LastModified != null && a.LastModified != b.LastModified) return false;
-            //if (!CollectionComparers.CompareLists(a.RelatedVolumes, b.RelatedVolumes)) return false;
-            if (a.Checksum != null && b.Checksum != null && !CollectionComparers.CompareByteArrays(a.Checksum, b.Checksum)) return false;
-            if (a.HashAlgUsed != null && b.HashAlgUsed != null && a.HashAlgUsed != b.HashAlgUsed) return false;
-            if (a.TimeAdded != null && b.TimeAdded != null && a.TimeAdded != b.TimeAdded) return false;
-            if (a.Status != null && b.Status != null && a.Status != b.Status) return false;
-            if (a.Monolithic != null && b.Monolithic != null && a.Monolithic != b.Monolithic) return false;
-            return true;
+                if (!(a.RelatedVolumes is null ^ b.RelatedVolumes is null))
+                {
+                    foreach (DiscAndBurnStatus relationshipA in a.RelatedVolumes)
+                    {
+                        bool result = false;
+                        foreach (DiscAndBurnStatus relationshipB in b.RelatedVolumes)
+                        {
+                            if (relationshipA == relationshipB)
+                            {
+                                result = true;
+                                break;
+                            }
+                        }
+                        if (!result) return false;
+                    }
+                }
+
+                //thought: this could also be a huge boolean expression, but do we want a huge boolean expression?
+                if (a.FileName != null && b.FileName != null && a.FileName != b.FileName) return false;
+                if (a.OriginalPath != null && b.OriginalPath != null && a.OriginalPath != b.OriginalPath) return false;
+                if (a.SizeInBytes != null && b.SizeInBytes != null && a.SizeInBytes != b.SizeInBytes) return false;
+                if (a.LastModified != null && b.LastModified != null && a.LastModified != b.LastModified) return false;
+                //if (!CollectionComparers.CompareLists(a.RelatedVolumes, b.RelatedVolumes)) return false;
+                if (a.Checksum != null && b.Checksum != null && !CollectionComparers.CompareByteArrays(a.Checksum, b.Checksum)) return false;
+                if (a.HashAlgUsed != null && b.HashAlgUsed != null && a.HashAlgUsed != b.HashAlgUsed) return false;
+                if (a.TimeAdded != null && b.TimeAdded != null && a.TimeAdded != b.TimeAdded) return false;
+                if (a.Status != null && b.Status != null && a.Status != b.Status) return false;
+                if (a.Monolithic != null && b.Monolithic != null && a.Monolithic != b.Monolithic) return false;
+                return true;
+            }
         }
 
         public static bool operator ==(FileProps? a, FileProps? b)
@@ -127,26 +133,29 @@ namespace BurnManager
             if (a is null && !(b is null) || !(a is null) && b is null) return false;
             if (a is null && b is null) return true;
 
-            bool relationshipCompare = false;
-            foreach (DiscAndBurnStatus relationships1 in a.RelatedVolumes)
+            lock (a.LockObj) lock (b.LockObj)
             {
-                foreach (DiscAndBurnStatus relationships2 in b.RelatedVolumes)
+                bool relationshipCompare = false;
+                foreach (DiscAndBurnStatus relationships1 in a.RelatedVolumes)
                 {
-                    if (relationships1 == relationships2) relationshipCompare = true;
-                    break;
+                    foreach (DiscAndBurnStatus relationships2 in b.RelatedVolumes)
+                    {
+                        if (relationships1 == relationships2) relationshipCompare = true;
+                        break;
+                    }
+                    if (!relationshipCompare) return false;
                 }
-                if (!relationshipCompare) return false;
-            }
 
-            return (a.FileName == b.FileName &&
-                a.OriginalPath == b.OriginalPath &&
-                a.SizeInBytes == b.SizeInBytes &&
-                a.LastModified == b.LastModified &&
-                CollectionComparers.CompareByteArrays(a.Checksum, b.Checksum) &&
-                a.HashAlgUsed == b.HashAlgUsed &&
-                a.TimeAdded == b.TimeAdded &&
-                a.Status == b.Status &&
-                a.Monolithic == b.Monolithic);
+                return (a.FileName == b.FileName &&
+                    a.OriginalPath == b.OriginalPath &&
+                    a.SizeInBytes == b.SizeInBytes &&
+                    a.LastModified == b.LastModified &&
+                    CollectionComparers.CompareByteArrays(a.Checksum, b.Checksum) &&
+                    a.HashAlgUsed == b.HashAlgUsed &&
+                    a.TimeAdded == b.TimeAdded &&
+                    a.Status == b.Status &&
+                    a.Monolithic == b.Monolithic);
+            }
         }
 
         public static bool operator !=(FileProps a, FileProps b)

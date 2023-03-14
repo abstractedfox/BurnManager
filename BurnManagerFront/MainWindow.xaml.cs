@@ -54,6 +54,8 @@ namespace BurnManagerFront
                 listBox.DataContext = api.Data.AllFiles.Files;
                 BindingOperations.EnableCollectionSynchronization(api.Data.AllFiles.Files, api.LockObj);
 
+                burnListBox.DataContext = api.Data.AllVolumes;
+                BindingOperations.EnableCollectionSynchronization(api.Data.AllVolumes, api.LockObj);
             });
 
             if (api.Data.AllFiles.OnUpdate != null)
@@ -125,7 +127,6 @@ namespace BurnManagerFront
             if (filesToChecksum.Count > 0) hashtime.AddBatch(filesToChecksum);
             hashtime.FinishQueue();
 
-            //while (!hashtime.IsComplete) ; //prevent returning until we implement a real event pattern
         }
 
         private async void RemoveFiles_Button_Click(object sender, RoutedEventArgs e)
@@ -148,9 +149,30 @@ namespace BurnManagerFront
             _popOperation(thisOperation);
         }
 
+        private void VerifyChecksums_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            lock (_lockObj)
+            {
+                PendingOperation? thisOperation = _pushOperation(true, "Verify checksums sequentially");
+                if (thisOperation == null) return;
+
+                List<FileProps> errors = BurnManagerAPI.VerifyChecksumsSequential(api.Data.AllFiles);
+                if (errors.Count == 0)
+                {
+                    System.Windows.MessageBox.Show("Verify checksums: No errors found!");
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show(errors.Count + " errored files were found.");
+                }
+
+                _popOperation(thisOperation);
+            }
+        }
+
         private void _debugButtonClick(object sender, RoutedEventArgs e)
         {
-            _openSaveDialog("asdf!");
+            //api.TestState();
         }
 
         //Push a new operation to _pendingOperations after checking whether a new operation can be added.
@@ -303,7 +325,7 @@ namespace BurnManagerFront
         private async void FileOpen_MenuClick(object sender, RoutedEventArgs e)
         {
             await Task.Run(() => { 
-            lock (_lockObj)
+                lock (_lockObj)
                 {
                     PendingOperation? thisOperation = _pushOperation(true, "File Open");
                     if (thisOperation == null) return;
@@ -343,6 +365,46 @@ namespace BurnManagerFront
                 }
             });
         }
+
+        private async void GenerateBurns_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            PendingOperation? thisOperation;
+            ulong volumeSize = 0;
+            ulong clusterSize = 0;
+
+            lock (_lockObj)
+            {
+                thisOperation = _pushOperation(true, "File Sort");
+                if (thisOperation == null) return;
+
+                try
+                {
+                    volumeSize = ulong.Parse(VolumeSizeInput.Text);
+                    clusterSize = ulong.Parse(BlockSizeInput.Text);
+                }
+                catch (FormatException)
+                {
+                    System.Windows.MessageBox.Show("Please input a valid number!");
+                    _popOperation(thisOperation);
+                    return;
+                }
+                catch (OverflowException)
+                {
+                    System.Windows.MessageBox.Show("Please insert a value smaller than " + ulong.MaxValue);
+                    _popOperation(thisOperation);
+                    return;
+                }
+            }
+
+            List<FileProps> errors = await api.EfficiencySort(clusterSize, volumeSize);
+
+
+            lock (_lockObj)
+            {
+                _popOperation(thisOperation);
+            }
+        }
+
     }
 
 
