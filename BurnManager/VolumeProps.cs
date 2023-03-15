@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Reflection.Metadata;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -378,6 +379,14 @@ namespace BurnManager
         public ulong ClusterSizeAdjustment(ulong SizeInBytes)
         {
             return SizeInBytes + (SizeInBytes % ClusterSize);
+        }
+
+        //Returns a JSON string containing the name and ID of this VolumeProps and only the 
+        //original paths and checksums of each FileProps.
+        public string GetPathsAndChecksumsAsJSON()
+        {
+            string output = JsonSerializer.Serialize(new VolumePropsSummaryOutput(this));
+            return output;
         }
 
         public static bool operator ==(VolumeProps? a, VolumeProps? b)

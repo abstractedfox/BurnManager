@@ -331,7 +331,12 @@ namespace BurnManager
             return Operations.Remove(operationToRemove);
         }
 
+        //===================Other
+        //Save the string in 'contents' to the path at 'path.'
+        public static void SaveFile(string contents, string path)
+        {
 
+        }
 
         //===================Test functions
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace BurnManager
@@ -32,6 +33,7 @@ namespace BurnManager
             {
                 VolumeProps volume = new VolumeProps(volumeSize);
                 volume.SetIdentifier(VolumeProps.GetNewID(results));
+                volume.Name = "Sorted Volume " + volume.Identifier;
 
                 volume.ClusterSize = clusterSize;
                 volume.Add(sortedFiles.First.Value);
@@ -68,6 +70,7 @@ namespace BurnManager
 
                     sortedFiles.Remove(nextFile);
                 }
+
 
                 results.Add(volume);
             }
