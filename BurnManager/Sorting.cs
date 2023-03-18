@@ -78,6 +78,77 @@ namespace BurnManager
             return results;
         }
 
+        //Distributes files by populating each volume with the biggest file that will fit,
+        //then continues by adding each next file that is closest in size to half the remaining space
+        public static List<VolumeProps> SortForEfficientDistribution(ICollection<FileProps> files, ulong clusterSize,
+            ulong volumeSize, out List<FileProps> erroredFiles, bool includeOutputFile)
+        {
+            if (!includeOutputFile) return SortForEfficientDistribution(files, clusterSize, volumeSize, out erroredFiles);
+
+            LinkedList<FileProps> sortedFiles = new LinkedList<FileProps>(SortBySizeInBytesDescending(files));
+            erroredFiles = new List<FileProps>();
+            List<VolumeProps> results = new List<VolumeProps>();
+
+            //Remove any files too big for the volume size
+            while (sortedFiles.First != null && sortedFiles.First.Value.SizeInBytes > volumeSize)
+            {
+                erroredFiles.Add(sortedFiles.First.Value);
+                sortedFiles.RemoveFirst();
+            }
+
+            if (sortedFiles.Count == 0) return new List<VolumeProps>();
+
+            LinkedListNode<FileProps> origin = sortedFiles.First;
+
+            while (sortedFiles.Count > 0)
+            {
+                VolumeProps volume = new VolumeProps(volumeSize);
+                volume.SetIdentifier(VolumeProps.GetNewID(results));
+                volume.Name = "Sorted Volume " + volume.Identifier;
+
+                volume.ClusterSize = clusterSize;
+                volume.Add(sortedFiles.First.Value);
+                sortedFiles.RemoveFirst();
+
+                origin = sortedFiles.First;
+
+                while (sortedFiles.Count > 0 &&
+                    volume.ClusterSizeAdjustment((ulong)sortedFiles.Last.Value.SizeInBytes) <= volume.SpaceRemaining)
+                {
+
+                    ulong targetSize = (ulong)volume.SpaceRemaining / 2;
+                    //LinkedListNode<FileProps> origin = sortedFiles.First;
+
+                    LinkedListNode<FileProps> nextFile = _findNearestNodeToTargetSize(origin, targetSize);
+
+
+                    bool outOfSpace = false;
+                    while (volume.ClusterSizeAdjustment((ulong)nextFile.Value.SizeInBytes) > volume.SpaceRemaining)
+                    {
+                        if (nextFile.Next == null)
+                        {
+                            outOfSpace = true;
+                            break;
+                        }
+                        nextFile = nextFile.Next;
+                    }
+                    if (outOfSpace) break;
+
+                    volume.Add(nextFile.Value);
+
+                    if (nextFile.Next != null) origin = nextFile.Next;
+                    else if (nextFile.Previous != null) origin = nextFile.Previous;
+
+                    sortedFiles.Remove(nextFile);
+                }
+
+
+                results.Add(volume);
+            }
+
+            return results;
+        }
+
         public static FileProps[] SortBySizeInBytesDescending(ICollection<FileProps> files)
         {
             FileProps[] sorted = new FileProps[files.Count];

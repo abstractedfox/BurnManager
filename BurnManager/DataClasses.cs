@@ -91,7 +91,7 @@ namespace BurnManager
         }
     }
 
-    //Describes a pending operation
+    //Describes a pending operation. This is intended for the convenience of the implementation
     public class PendingOperation{
         public object LockObj = new object();
         private bool _blocking = false;
