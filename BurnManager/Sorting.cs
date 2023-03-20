@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.Arm;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace BurnManager
@@ -10,8 +13,8 @@ namespace BurnManager
     {
         //Distributes files by populating each volume with the biggest file that will fit,
         //then continues by adding each next file that is closest in size to half the remaining space
-        public static List<VolumeProps> SortForEfficientDistribution(ICollection<FileProps> files, ulong clusterSize, 
-            ulong volumeSize, out List<FileProps> erroredFiles)
+        public static List<VolumeProps> SortForEfficientDistribution(ICollection<FileProps> files, ulong clusterSize,
+            ulong volumeSize, bool includeLog, out List<FileProps> erroredFiles)
         {
             LinkedList<FileProps> sortedFiles = new LinkedList<FileProps>(SortBySizeInBytesDescending(files));
             erroredFiles = new List<FileProps>();
@@ -32,6 +35,7 @@ namespace BurnManager
             {
                 VolumeProps volume = new VolumeProps(volumeSize);
                 volume.SetIdentifier(VolumeProps.GetNewID(results));
+                volume.Name = "Sorted Volume " + volume.Identifier;
 
                 volume.ClusterSize = clusterSize;
                 volume.Add(sortedFiles.First.Value);
@@ -42,8 +46,8 @@ namespace BurnManager
                 while (sortedFiles.Count > 0 &&
                     volume.ClusterSizeAdjustment((ulong)sortedFiles.Last.Value.SizeInBytes) <= volume.SpaceRemaining)
                 {
-
-                    ulong targetSize = (ulong)volume.SpaceRemaining / 2;
+                    ulong targetSize = 1;
+                    if ((ulong)volume.SpaceRemaining > 0) targetSize = (ulong)volume.SpaceRemaining / 2;
                     //LinkedListNode<FileProps> origin = sortedFiles.First;
 
                     LinkedListNode<FileProps> nextFile = _findNearestNodeToTargetSize(origin, targetSize);
@@ -69,11 +73,59 @@ namespace BurnManager
                     sortedFiles.Remove(nextFile);
                 }
 
+                bool firstFileTooBig = false;
+                if (includeLog)
+                {
+                    FileProps log = new FileProps(FileProps.StoreDataInNewFileProps(volume.GetPathsAndChecksumsAsJSON(),
+                        Constants.Type.VolumePropsOutputIdentifier));
+
+                    volume.Add(log);
+                    while (volume.SpaceUsed > volume.CapacityInBytes)
+                    {
+                        volume.Remove(log);
+                        FileProps smallestFile = volume.SmallestFile;
+                        if (sortedFiles.Count > 0)
+                        {
+                            origin = _findNearestNodeToTargetSize(origin, (ulong)smallestFile.SizeInBytes);
+                            if (origin.Value.SizeInBytes <= smallestFile.SizeInBytes)
+                            {
+                                sortedFiles.AddBefore(origin, smallestFile);
+                            }
+                            else
+                            {
+                                sortedFiles.AddAfter(origin, smallestFile);
+                            }
+                        }
+                        else
+                        {
+                            sortedFiles.AddFirst(smallestFile);
+                        }
+
+                        volume.Remove(smallestFile);
+                        if (volume.Files.Count == 0)
+                        {
+                            erroredFiles.Add(smallestFile);
+                            firstFileTooBig = true;
+                            break;
+                        }
+
+                        log = new FileProps(FileProps.StoreDataInNewFileProps(volume.GetPathsAndChecksumsAsJSON(),
+                            Constants.Type.VolumePropsOutputIdentifier));
+
+                        volume.Add(log);
+                    }
+                }
+                if (firstFileTooBig)
+                {
+                    continue;
+                }
+
                 results.Add(volume);
             }
 
             return results;
         }
+
 
         public static FileProps[] SortBySizeInBytesDescending(ICollection<FileProps> files)
         {

@@ -45,7 +45,7 @@
                         <StackPanel Orientation="Horizontal" Margin="10,10,10,10">
                             <Button Content="Add Files!" Click="AddFiles_ButtonClick"
                                 Width="200" Margin="0,0,10,0"/>
-                            <Button Content="Remove Selected Files!" Click="RemoveFiles_Button_Click"
+                            <Button Content="Remove Selected Files!" Click="MainWindow_RemoveFiles_Button_Click"
                                 Width="200"/>
                         </StackPanel>
                         <Button Content="Verify Checksums" Click="VerifyChecksums_ButtonClick"/>
@@ -68,7 +68,8 @@
                 <StackPanel>
                     <ListBox x:Name="burnListBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
                                  ItemsSource="{Binding DataContext, ElementName=burnListBox}"
-                                 Margin="20,20,20,20" Height="324" SelectionMode="Extended">
+                                 Margin="20,20,20,20" Height="324" SelectionMode="Extended"
+                             MouseDoubleClick="burnListBox_MouseDoubleClick">
 
                         <ListBox.ItemTemplate>
                             <DataTemplate>

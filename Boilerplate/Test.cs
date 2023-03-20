@@ -43,7 +43,7 @@ namespace BurnManager
 
 
             List<FileProps> errors;
-            List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(files, 4096, 8000000000, out errors);
+            List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(files, 4096, 8000000000, true, out errors);
 
             Console.WriteLine("breakpoint!");
         }
@@ -148,7 +148,7 @@ namespace BurnManager
 
             string serialized = JsonSerializer.Serialize(data1);
             FileAndDiscData data2 = JsonSerializer.Deserialize<FileAndDiscData>(serialized);
-            await data2.PopulateVolumes();
+            data2.PopulateVolumes();
             if (data1 == data2)
             {
                 Pass("Deserialization of larger FileAndDiscData");
@@ -199,7 +199,7 @@ namespace BurnManager
 
             string serialized = JsonSerializer.Serialize(data);
             FileAndDiscData deserialized = JsonSerializer.Deserialize<FileAndDiscData>(serialized);
-            await deserialized.PopulateVolumes();
+            deserialized.PopulateVolumes();
 
             DiscAndBurnStatus test1 = data.AllFiles.First().RelatedVolumes.First();
             DiscAndBurnStatus test2 = deserialized.AllFiles.First().RelatedVolumes.First();
@@ -252,7 +252,7 @@ namespace BurnManager
             string jsonString = testData.Serialize();
             ResultCode result = 0;
             ObservableFileAndDiscData deserialized = new ObservableFileAndDiscData(BurnManagerAPI.JsonToFileAndDiscData(jsonString, ref result));
-            await deserialized.PopulateVolumes();
+            deserialized.PopulateVolumes();
 
             if (deserialized == testData.Data && result == ResultCode.SUCCESSFUL)
             {

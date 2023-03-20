@@ -1,0 +1,30 @@
+BurnManager is a simple application for organizing offline backups, designed with the expectation that the user would be using write-once media (such as blu ray discs) to store files offline.
+
+Architecturally, it consists of a few components which are intended to be designed somewhat independently from each other. Everything in the "BurnManager" project is meant to work internally to that project, meaning all data types and classes are fair game to use. Crucially, we want to keep platform-specific features out of this class, and most major program logic inside of it. It's important that it be simple to transparently stick any user interface on top of it, where all the programmer would need to do is instantiate BurnManagerAPI and use the available functions as documented.
+
+Within the BurnManager project, "FileProps" and "VolumeProps" are the two data types of note, representing files and volumes respectively, with most other data or collection types facilitating use of these. 
+
+"ChecksumFactory" is the class that handles batch checksums; usage involves creating an instance of this class, calling StartQueue(), passing batches of files, then calling FinishQueue() when done sending batches. This process runs asynchronously, and a delegate can be assigned which is called when it completes its queue.
+
+"Sorting.cs" contains functions related to sorting, including the binpacking algorithm. Currently, the algorithm is fairly simple, populating each volume by beginning with the largest file that will fit, then filling the rest with whichever file is nearest in size to half the remaining space. It begins by sorting the passed list of files from largest to smallest (this function is a candidate for later optimization; right now it would run o(n) if the source set was already sorted and o(n^2) if it was arranged from smallest to largest) into a linked list, at which point the remaining portion will (in most cases) run fairly leanly. The "_findNearestNodeToTargetSize" function receives a starting node as an argument and traverses in both directions, and on each new iteration, is fed a node adjacent to the previous good node, meaning that in many cases it will only need to traverse a couple of nodes in order to find the next match.
+
+"ObservableFileAndDiscData" and "ObservableFileList" don't add any new features to their base classes, they just incorporate C#'s built in observable collection classes for data binding in WPF.
+
+The "BurnManagerFront" project contains the current user interface. Of note is use of the "PendingOperation" class, which is declared in the BurnManager project, but not used within it. In BurnManagerFront, this class is used to block certain operations from being initiated while others are still in progress (such as preventing a Save As during checksum batching). Here's a brief example of how it's used (lock blocks are omitted for this example, but should be used in practice):
+
+	private void _importantFunction()
+	{
+		PendingOperation? thisOperation = _pushOperation(true, "An important function");
+		//1st arg = the operation is blocking, 2nd arg (optional) = a description of the running operation that the user will be able to see
+		
+		if (thisOperation == null) return;
+		//_pushOperation presents a dialog box to the user indicating that an operation is in progress and returns null if there is already another operation running.
+
+		//Important, salient code goes here
+
+		_popOperation(thisOperation);
+		//The PendingOperation is removed from the 
+	}
+
+Under the hood, all it does is add an instance of PendingOperation to a list declared in MainWindow.xaml.cs after checking that no instances already exist, then remove it at the end.
+

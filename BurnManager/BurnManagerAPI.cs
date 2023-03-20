@@ -156,7 +156,7 @@ namespace BurnManager
             await Task.Run(() => { 
                 lock (LockObj)
                 {
-                    List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(Data.AllFiles, clusterSize, volumeSize, out errors);
+                    List<VolumeProps> sorted = Sorting.SortForEfficientDistribution(Data.AllFiles, clusterSize, volumeSize, true, out errors);
 
                     foreach (var volume in Data.AllVolumes)
                     {
@@ -168,6 +168,8 @@ namespace BurnManager
 
                 }
             });
+
+            FileProps a = Data.AllVolumes.First().Files.Files[Constants.VolumePropsOutputIdentifier];
 
             return errors;
         }
@@ -331,7 +333,12 @@ namespace BurnManager
             return Operations.Remove(operationToRemove);
         }
 
+        //===================Other
+        //Save the string in 'contents' to the path at 'path.'
+        public static void SaveFile(string contents, string path)
+        {
 
+        }
 
         //===================Test functions
 

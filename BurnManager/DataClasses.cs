@@ -91,7 +91,7 @@ namespace BurnManager
         }
     }
 
-    //Describes a pending operation
+    //Describes a pending operation. This is intended for the convenience of the implementation
     public class PendingOperation{
         public object LockObj = new object();
         private bool _blocking = false;
@@ -118,4 +118,55 @@ namespace BurnManager
         }
     }
 
+    public class Constants
+    {
+        public enum Type
+        {
+            uninitialized,
+            VolumePropsOutputIdentifier
+        };
+        public const string UndefinedData = "|UndefinedData|";
+        public const string VolumePropsOutputIdentifier = "|VolumePropsOutputFile|";
+
+        public static string GetConstant(Type type)
+        {
+            if (type == Type.VolumePropsOutputIdentifier) return VolumePropsOutputIdentifier;
+            return UndefinedData;
+        }
+
+        public static Type? IsConstant(string input)
+        {
+            if (input == VolumePropsOutputIdentifier) return Type.VolumePropsOutputIdentifier;
+            return null;
+        }
+    }
+
+
+    //A class to be used when creating an output file from a VolumeProps. This does not produce data for serialization
+    //of the main file store, it's for the reference file to be included with each burn.
+    class VolumePropsSummaryOutput
+    {
+        public string name { get; } = "Uninitialized VolumePropsSummaryOutput";
+        public int volumeID { get; } = -1;
+        public List<Tuple<string, byte[]>> data { get; } = new List<Tuple<string, byte[]>>();
+
+        public VolumePropsSummaryOutput(VolumeProps volume)
+        {
+            name = volume.Name;
+            volumeID = volume.Identifier;
+            foreach (var file in volume)
+            {
+                if (file.OriginalPath == null)
+                {
+                    file.Status = FileStatus.BAD_DATA;
+                }
+                if (file.Checksum == null)
+                {
+                    file.Status = FileStatus.CHECKSUM_ERROR;
+                }
+
+                data.Add(new Tuple<string, byte[]>(file.OriginalPath, file.Checksum));
+            }
+        }
+    }
 }
