@@ -118,6 +118,30 @@ namespace BurnManager
         }
     }
 
+    public class Constants
+    {
+        public enum Type
+        {
+            uninitialized,
+            VolumePropsOutputIdentifier
+        };
+        public const string UndefinedData = "|UndefinedData|";
+        public const string VolumePropsOutputIdentifier = "|VolumePropsOutputFile|";
+
+        public static string GetConstant(Type type)
+        {
+            if (type == Type.VolumePropsOutputIdentifier) return VolumePropsOutputIdentifier;
+            return UndefinedData;
+        }
+
+        public static Type? IsConstant(string input)
+        {
+            if (input == VolumePropsOutputIdentifier) return Type.VolumePropsOutputIdentifier;
+            return null;
+        }
+    }
+
+
     //A class to be used when creating an output file from a VolumeProps. This does not produce data for serialization
     //of the main file store, it's for the reference file to be included with each burn.
     class VolumePropsSummaryOutput
@@ -145,5 +169,4 @@ namespace BurnManager
             }
         }
     }
-
 }

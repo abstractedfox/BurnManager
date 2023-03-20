@@ -91,6 +91,37 @@ namespace BurnManager
             }
         }
 
+        public FileProps LargestFile
+        {
+            get
+            {
+                FileProps favorite = Files.First();
+                foreach(var file in Files)
+                {
+                    if (file.SizeInBytes > favorite.SizeInBytes)
+                    {
+                        favorite = file;
+                    }
+                }
+                return favorite;
+            }
+        }
+        public FileProps SmallestFile
+        {
+            get
+            {
+                FileProps favorite = Files.First();
+                foreach (var file in Files)
+                {
+                    if (file.SizeInBytes < favorite.SizeInBytes)
+                    {
+                        favorite = file;
+                    }
+                }
+                return favorite;
+            }
+        }
+
         public VolumeProps(ulong sizeInBytes)
         {
             lock (LockObj)
@@ -383,10 +414,14 @@ namespace BurnManager
 
         //Returns a JSON string containing the name and ID of this VolumeProps and only the 
         //original paths and checksums of each FileProps.
+        //For logging the contents of a VolumeProps; not for serialization/deserialization
         public string GetPathsAndChecksumsAsJSON()
         {
-            string output = JsonSerializer.Serialize(new VolumePropsSummaryOutput(this));
-            return output;
+            lock (LockObj)
+            {
+                string output = JsonSerializer.Serialize(new VolumePropsSummaryOutput(this));
+                return output;
+            }
         }
 
         public static bool operator ==(VolumeProps? a, VolumeProps? b)
@@ -394,25 +429,28 @@ namespace BurnManager
             //if (a is null && !(b is null) || !(a is null) && b is null) return false;
             if (a is null ^ b is null) return false;
             if (a is null && b is null) return true;
-            if (a.Files.Count() != b.Files.Count()) return false;
-
-            bool fileListsIdentical = false;
-            foreach (FileProps fileA in a.Files)
-            {
-                foreach (FileProps fileB in b.Files)
+            lock (a.LockObj) lock (b.LockObj)
                 {
-                    if (fileA == fileB)
-                    {
-                        fileListsIdentical = true;
-                        break;
-                    }
-                    if (!fileListsIdentical) return false;
-                }
-            }
+                    if (a.Files.Count() != b.Files.Count()) return false;
 
-            return (a.CapacityInBytes == b.CapacityInBytes &&
-                a.Identifier == b.Identifier &&
-                a.TimesBurned == b.TimesBurned);
+                    bool fileListsIdentical = false;
+                    foreach (FileProps fileA in a.Files)
+                    {
+                        foreach (FileProps fileB in b.Files)
+                        {
+                            if (fileA == fileB)
+                            {
+                                fileListsIdentical = true;
+                                break;
+                            }
+                            if (!fileListsIdentical) return false;
+                        }
+                    }
+
+                    return (a.CapacityInBytes == b.CapacityInBytes &&
+                        a.Identifier == b.Identifier &&
+                        a.TimesBurned == b.TimesBurned);
+                }
         }
         public static bool operator !=(VolumeProps? a, VolumeProps? b)
         {
@@ -421,11 +459,9 @@ namespace BurnManager
 
         public IEnumerator<FileProps> GetEnumerator()
         {
+            lock (LockObj)
             {
-                lock (LockObj)
-                {
-                    return Files.GetEnumerator();
-                }
+                return Files.GetEnumerator();
             }
         }
     }

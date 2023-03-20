@@ -128,6 +128,17 @@ namespace BurnManager
             }
         }
 
+
+        public static FileProps StoreDataInNewFileProps(string data, Constants.Type typeOfData)
+        {
+            return new FileProps()
+            {
+                OriginalPath = Constants.GetConstant(typeOfData),
+                FileName = data,
+                SizeInBytes = (ulong)data.Length
+            };
+        }
+
         public static bool operator ==(FileProps? a, FileProps? b)
         {
             if (a is null && !(b is null) || !(a is null) && b is null) return false;
