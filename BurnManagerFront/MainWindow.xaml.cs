@@ -1,4 +1,10 @@
-﻿using BurnManager;
+﻿//Copyright 2023 Chris/abstractedfox.
+//This work is not licensed for use as source or training data for any language model, neural network,
+//AI tool or product, or other software which aggregates or processes material in a way that may be used to generate
+//new or derived content from or based on the input set, or used to build a data set or training model for any software or
+//tooling which facilitates the use or operation of such software.
+
+using BurnManager;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -431,6 +437,36 @@ namespace BurnManagerFront
                 VolumePropsDetails detailsWindow = new VolumePropsDetails(this);
                 detailsWindow.SetVolumeProps(item);
                 detailsWindow.Show();
+            }
+        }
+
+        private void StageBurn_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            lock (LockObj)
+            {
+                PendingOperation? thisOperation = PushOperation(true, "Staging Burn");
+                if (thisOperation == null) return;
+
+                VolumeProps? volumeToStage = (VolumeProps)burnListBox.SelectedItem;
+                if (volumeToStage == null)
+                {
+                    System.Windows.MessageBox.Show("Please select a burn to stage.");
+                    PopOperation(thisOperation);
+                    return;
+                }
+
+                string stagingPath = StagingDirectoryInput.Text;
+                if (!Directory.Exists(stagingPath))
+                {
+                    System.Windows.MessageBox.Show("Please input a valid staging directory.");
+                    PopOperation(thisOperation);
+                    return;
+                }
+
+                ResultCode result = 
+                    BurnManagerAPI.StageVolumeProps(volumeToStage, stagingPath, false, api.PlatformSpecificDirectorySeparator);
+
+                PopOperation(thisOperation);
             }
         }
     }

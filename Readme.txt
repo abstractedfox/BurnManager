@@ -1,5 +1,19 @@
-Burn Manager Redux
+Burn Manager is a simple, lightweight application for offline backups, providing checksums for file integrity verification and using a binpacking algorithm for efficient use of space. Its operation is simple:
 
-This is the rewrite progress of the original Burn Manager (also known as 'DiscDoingsWPF'). That application was left in a working state (and is still available to use) but now that it's there, it could benefit from some better ideas and practices I picked up during and after. The objective this time is to have better separation of concerns (particularly separating platform specific features from program logic), cleaner data structures, and an overall more maintainable codebase. Feel free to observe progress as it comes along.
+1. Choose the "Add Files!" button and select any files you would like to include in your backups. Burn Manager generates an MD5 checksum of every file it tracks, so large amounts of data may take time.
 
-When completed, it will offer the same feature set as the original Burn Manager: tracking files to be burned to cold storage media (such as Blu Ray discs), organizing them to make efficient use of available space (to reduce the number of volumes needed), and recording a hash of those files for future integrity verification, and in many situations it's expected to be much more performant. This can be a useful part of your backup plan, as burned media is safe from software related corruption, ransomware, and some forms of user error.
+2. In the 'Burns' tab, insert the size of your burn media in bytes, and the cluster size of the format you intend to use. Then, click "Generate Burns!" Files will be sorted to fill each volume tightly, resulting in little wasted space. (Files that are larger than the burn media itself will not be included.)
+
+3. Put a valid directory into "Staging Path". This can be the path to your optical drive, or any other directory on your machine. Click "Stage Burn!", and the files will be copied to this directory, along with a JSON log file describing the original location of every file and its checksum. At this point, you may burn the disc using any software you like.
+
+4. Be sure to save!
+
+This can be a useful part of your backup plan, as burned media is safe from software related corruption, ransomware, and some forms of user error.
+
+Currently this application is in an MVP state; the above features all work cleanly and without apparent issues, but do let me know if you discover any.
+
+Under the hood, the architectural goals were for Burn Manager to have fairly clean separation of concerns, to make sensible use of generic design, and to keep to fairly modular, reusable code throughout. All the major program logic and data exists in the "BurnManager" project and its classes, such that any UI implementation should only need to create an instance of BurnManagerAPI and use the available functions as documented. The "BurnManager" project is also intended to be platform independent, and was shown to work with no changes on MacOS at various points in development.
+
+The "BurnManagerFront" project is the included WPF frontend, and per the goals above, only contains logic or functionality specific to frontend behaviors.
+
+This release of BurnManager is a full rewrite of the original Burn Manager (also known as "DiscDoingsWPF"). That project performed the same base functionality as this one, but was started as a learning exercise for C#, WPF, and asynchronous programming all at once. Users will find this release to be significantly more performant, and programmers will find it much easier to read and modify.
