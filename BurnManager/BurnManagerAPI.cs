@@ -1,4 +1,10 @@
-﻿using System;
+﻿//Copyright 2023 Chris/abstractedfox.
+//This work is not licensed for use as source or training data for any language model, neural network,
+//AI tool or product, or other software which aggregates or processes material in a way that may be used to generate
+//new or derived content from or based on the input set, or used to build a data set or training model for any software or
+//tooling which facilitates the use or operation of such software.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,6 +28,7 @@ namespace BurnManager
         private ObservableFileAndDiscData _lastSavedState;
         public object LockObj = new object();
         public const string Extension = ".burnmanager";
+        public char PlatformSpecificDirectorySeparator = '\\';
 
         public BurnManagerAPI()
         {
@@ -141,7 +148,6 @@ namespace BurnManager
         public async Task RemoveFile(FileProps file)
         {
             await Data.AllFiles.CascadeRemove(file, Data.AllVolumes, LockObj);
-            Console.WriteLine("boilerplate");
         }
         public void RemoveVolume(VolumeProps volume)
         {
@@ -304,6 +310,44 @@ namespace BurnManager
         public static void VerifyDataIntegrity(FileAndDiscData data)
         {
 
+        }
+
+        public static ResultCode StageVolumeProps(VolumeProps volume, string path, bool skipLogFile, char platformSpecificDirectorySeparator)
+        {
+            DirectoryInfo directory = new DirectoryInfo(path);
+            if (!directory.Exists) return ResultCode.INVALID_PATH;
+
+            if (path.Last() != platformSpecificDirectorySeparator)
+            {
+                path += platformSpecificDirectorySeparator;
+            }
+
+            string outputFilePath = path + volume.Name + Constants.VolumePropsOutputFilename;
+            if (File.Exists(outputFilePath)) return ResultCode.LOG_ALREADY_EXISTS;
+
+            bool errorsFound = false;
+            foreach (var file in volume)
+            {
+                if (file.OriginalPath == Constants.VolumePropsOutputIdentifier)
+                {
+                    if (!skipLogFile)
+                    {
+                        File.WriteAllText(outputFilePath, file.FileName);
+                    }
+                    continue;
+                }
+
+                if (File.Exists(file.OriginalPath))
+                {
+                    File.Copy(file.OriginalPath, path + file.FileName);
+                }
+                else
+                {
+                    file.Status = FileStatus.FILE_MISSING;
+                }
+            }
+            if (errorsFound) return ResultCode.FINISHED_WITH_ERRORS;
+            return ResultCode.SUCCESSFUL;
         }
 
         //===================Events and handlers
