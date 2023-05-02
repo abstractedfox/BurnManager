@@ -18,13 +18,13 @@ namespace BurnManager
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, World!");
-            //TestDataTypes();
-            ///TestAPI();
-            //TestJSONSerializer();
-            //TestJSONSerializerBigger();
+            TestDataTypes();
+            TestAPI();
+            TestJSONSerializer();
+            TestJSONSerializerBigger();
             //TestFileListOverride();
             //TestDescendingSort();
-            TestSorting();
+            //TestSorting();
             while (true) ; //prevent returning from main if awaited calls cause flow control to continue here
 
             Console.WriteLine("Plate boiled");
@@ -180,7 +180,7 @@ namespace BurnManager
         static async void TestJSONSerializer()
         {
             FileAndDiscData data = new FileAndDiscData();
-            data.AllFiles.Add(new FileProps
+            FileProps testProps = new FileProps
             {
                 Checksum = new byte[] { 1, 1, 1, 1 },
                 FileName = "testPropsA",
@@ -190,11 +190,22 @@ namespace BurnManager
                 OriginalPath = "c:\\testPropsA",
                 SizeInBytes = 500,
                 Status = FileStatus.GOOD
-            });
+            };
+
+            data.AllFiles.Add(testProps);
 
             VolumeProps testVol = new VolumeProps(100000);
             data.AllVolumes.Add(testVol);
             testVol.Add(data.AllFiles.First());
+
+            Console.WriteLine("Testing serialization of FileProps");
+            string serializeProps = JsonSerializer.Serialize(testProps);
+            FileProps deserializeProps = JsonSerializer.Deserialize<FileProps>(serializeProps);
+            if (deserializeProps == testProps)
+            {
+                Pass("Deserialized FileProps is equal to the original FileProps");
+            }
+            else Fail("Deserialized FileProps is not equal to the original FileProps");
 
             Console.WriteLine("Verifying data correctness before serialization:");
             if (data.AllVolumes.First().Files.First().RelatedVolumes.First().VolumeID == testVol.Identifier)
@@ -204,6 +215,7 @@ namespace BurnManager
             else Fail("Volume ID present in file matches the ID of the volume");
 
             string serialized = JsonSerializer.Serialize(data);
+
             FileAndDiscData deserialized = JsonSerializer.Deserialize<FileAndDiscData>(serialized);
             deserialized.PopulateVolumes();
 

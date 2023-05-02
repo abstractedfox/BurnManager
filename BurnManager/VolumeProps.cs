@@ -23,11 +23,38 @@ namespace BurnManager
                 return _getIdentifier;
             }
         }
+        [JsonIgnore]
         public readonly object LockObj = new object();
-        private int _identifier { get; set; } = -1;
+
         public string Name { get; set; } = "";
-        private ulong _capacityInBytes { get; set; }
-        private int _timesBurned { get; set; } = 0;
+
+        private List<DateTimeOffset> _eachTimeBurned = new List<DateTimeOffset>();
+        public IReadOnlyList<DateTimeOffset> EachTimeBurned
+        {
+            get
+            {
+                return _eachTimeBurned.AsReadOnly();
+            }
+        }
+        private int _timesBurned
+        {
+            get
+            {
+                return _eachTimeBurned.Count;
+            }
+        }
+
+        [JsonIgnore]
+        public int TimesBurned
+        {
+            get
+            {
+                lock (LockObj)
+                {
+                    return _timesBurned;
+                }
+            }
+        }
 
         [JsonIgnore]
         public FileList Files { get; } = new FileList();
@@ -38,6 +65,7 @@ namespace BurnManager
         //the 'size on disk' for that pool of files on this volume
         private ulong _totalSizeInBytesClusterSizeOffset = 0;
 
+        private ulong _capacityInBytes { get; set; }
         public ulong CapacityInBytes { 
             get
             {
@@ -47,6 +75,8 @@ namespace BurnManager
                 }
             }
         }
+
+        [JsonIgnore]
         public ulong SpaceRemaining { 
             get
             {
@@ -56,6 +86,8 @@ namespace BurnManager
                 }
             }
         }
+
+        [JsonIgnore]
         public ulong SpaceUsed { 
             get
             {
@@ -68,6 +100,7 @@ namespace BurnManager
 
         //Get the sum of the file sizes in the underlying FileList struct without compensation for
         //cluster size
+        [JsonIgnore]
         public ulong SpaceUsedByFiles
         {
             get
@@ -78,6 +111,8 @@ namespace BurnManager
                 }
             }
         }
+
+        private int _identifier { get; set; } = -1;
         public int Identifier { 
             get
             {
@@ -87,16 +122,8 @@ namespace BurnManager
                 }
             }
         }
-        public int TimesBurned {
-            get
-            {
-                lock (LockObj)
-                {
-                    return _timesBurned;
-                }
-            }
-        }
 
+        [JsonIgnore]
         public FileProps LargestFile
         {
             get
@@ -112,6 +139,8 @@ namespace BurnManager
                 return favorite;
             }
         }
+
+        [JsonIgnore]
         public FileProps SmallestFile
         {
             get
@@ -128,6 +157,7 @@ namespace BurnManager
             }
         }
 
+        //Constructors
         public VolumeProps(ulong sizeInBytes)
         {
             lock (LockObj)
@@ -145,7 +175,8 @@ namespace BurnManager
                     AssignIdentifierDelegate(copySource.GetIdentifier);
                     _identifier = copySource.Identifier;
                     _capacityInBytes = copySource.CapacityInBytes;
-                    _timesBurned = copySource.TimesBurned;
+                    Name = copySource.Name;
+                    foreach (var item in copySource.EachTimeBurned) _eachTimeBurned.Add(item);
                     foreach (var file in copySource)
                     {
                         lock (file.LockObj)
@@ -157,17 +188,22 @@ namespace BurnManager
             }
         }
 
+        
         [JsonConstructor]
-        public VolumeProps(IdentifierDelegate GetIdentifier, ulong CapacityInBytes, 
-            int Identifier, int TimesBurned, FileList Files)
+        public VolumeProps(
+            IdentifierDelegate GetIdentifier, ulong CapacityInBytes, string Name, ulong ClusterSize, 
+            int Identifier, IReadOnlyList<DateTimeOffset> EachTimeBurned)
         {
             lock (LockObj)
             {
                 this._getIdentifier = GetIdentifier;
                 this._capacityInBytes = CapacityInBytes;
+                this.Name = Name;
                 this._identifier = Identifier;
-                this._timesBurned = TimesBurned;
-                Files = new FileList();
+                foreach (var item in EachTimeBurned) this._eachTimeBurned.Add(item);
+                this.ClusterSize = ClusterSize;
+                
+                this.Files = new FileList();
             }
         }
 
@@ -305,15 +341,17 @@ namespace BurnManager
         {
             lock (LockObj)
             {
-                _timesBurned++;
+                //_timesBurned++;
+                _eachTimeBurned.Add(DateTimeOffset.Now);
             }
         }
         
-        public void DecrementBurnCount()
+        public bool DecrementBurnCount(DateTimeOffset burnDateToRemove)
         {
             lock (LockObj)
             {
-                _timesBurned--;
+                //_timesBurned--;
+                return _eachTimeBurned.Remove(burnDateToRemove);
             }
         }
 
@@ -350,6 +388,7 @@ namespace BurnManager
             }
         }
 
+        [JsonIgnore]
         public bool HasIdentifierDelegate
         {
             get
@@ -455,7 +494,8 @@ namespace BurnManager
 
                     return (a.CapacityInBytes == b.CapacityInBytes &&
                         a.Identifier == b.Identifier &&
-                        a.TimesBurned == b.TimesBurned);
+                        a.TimesBurned == b.TimesBurned &&
+                        a.Name == b.Name);
                 }
         }
         public static bool operator !=(VolumeProps? a, VolumeProps? b)
