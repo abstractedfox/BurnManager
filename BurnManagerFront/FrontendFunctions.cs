@@ -25,8 +25,6 @@ namespace BurnManagerFront
     {
         public static async Task<IReadOnlyList<StorageFile>> OpenFilePicker(System.Windows.Window parentWindow)
         {
-            //Microsoft.Win32.OpenFileDialog picker = new Microsoft.Win32.OpenFileDialog();
-            //bool? result = picker.ShowDialog
             IReadOnlyList<StorageFile> files = new List<StorageFile>();
 
             FileOpenPicker picker = new FileOpenPicker();
@@ -42,19 +40,75 @@ namespace BurnManagerFront
             return files;
         }
 
+        public static async Task<StorageFolder> OpenFolderPicker(System.Windows.Window parentWindow)
+        {
+            StorageFolder folder;
+
+            FolderPicker picker = new FolderPicker();
+            picker.ViewMode = PickerViewMode.List;
+            picker.FileTypeFilter.Add("*");
+            picker.SuggestedStartLocation = PickerLocationId.Desktop;
+
+
+            var winapimoment = new System.Windows.Interop.WindowInteropHelper(parentWindow);
+            IntPtr handle = winapimoment.Handle;
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, handle);
+            folder = await picker.PickSingleFolderAsync();
+            return folder;
+        }
+
+        public static async Task AddStorageFiles (IReadOnlyList<StorageFile> files, CompletionCallback onComplete, BurnManagerAPI api)
+        {
+            List<FileProps> filesToChecksum = new List<FileProps>();
+            List<FileProps> erroredFiles = new List<FileProps>();
+            int batchQueueSize = 100;
+
+            ChecksumFactory hashtime = new ChecksumFactory();
+            hashtime.callOnCompletionDelegate = onComplete;
+            hashtime.StartQueue();
+
+
+            foreach (StorageFile file in files)
+            {
+                FileProps filePropped = new FileProps(await FrontendFunctions.StorageFileToFileProps(file));
+
+                //note: Dispatcher.InvokeAsync is necessary because ObservableCollection cannot be modified by 
+                //threads other than the one that created it
+                //await Dispatcher.InvokeAsync(async () => api.AddFile(filePropped));
+                api.AddFile(filePropped);
+
+                filesToChecksum.Add(filePropped);
+                if (filesToChecksum.Count > batchQueueSize)
+                {
+                    hashtime.AddBatch(filesToChecksum);
+                    filesToChecksum.Clear();
+                }
+            }
+
+            if (filesToChecksum.Count > 0) hashtime.AddBatch(filesToChecksum);
+            hashtime.FinishQueue();
+        }
+
         public static async Task<FileProps> StorageFileToFileProps(StorageFile file)
         {
             FileStatus status = 0;
-            if (file.IsAvailable) status = FileStatus.GOOD;
-            return new FileProps
-            {
-                FileName = file.Name,
-                OriginalPath = file.Path,
-                SizeInBytes =(await file.GetBasicPropertiesAsync()).Size,
-                LastModified = (await file.GetBasicPropertiesAsync()).DateModified,
-                Status = status,
-                TimeAdded = DateTimeOffset.Now
-            };
+            FileProps output = new FileProps();
+            await Task.Run(async () => {
+                if (file.IsAvailable) status = FileStatus.GOOD;
+                else status = FileStatus.FILE_MISSING;
+
+                output =  new FileProps
+                    {
+                        FileName = file.Name,
+                        OriginalPath = file.Path,
+                        SizeInBytes =(await file.GetBasicPropertiesAsync()).Size,
+                        LastModified = (await file.GetBasicPropertiesAsync()).DateModified,
+                        Status = status,
+                        TimeAdded = DateTimeOffset.Now
+                    };
+            });
+
+            return output;
         }
 
         public static void OperationsInProgressDialog()

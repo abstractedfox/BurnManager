@@ -77,8 +77,8 @@ namespace BurnManager
 
         private async Task _runBatch()
         {
-            int batchCount = 0;
-            lock (_lockObj) batchCount = batches.Count;
+            //int batchCount = 0;
+            //lock (_lockObj) batchCount = batches.Count;
             Func<bool> loopCondition = () =>
             {
                 lock (_lockObj)
@@ -96,10 +96,10 @@ namespace BurnManager
                 {
                     if (batches.Count > 0)
                     {
-                        var nextBatch = batches.First();
+                        var nextBatch = batches.Last();
                         thisBatch = new List<FileProps>(nextBatch);
-                        batches.RemoveAt(0);
-                        batchCount = batches.Count;
+                        batches.RemoveAt(batches.Count - 1);
+                        //batchCount = batches.Count;
                     }
                     else continue;
                 }
@@ -111,11 +111,6 @@ namespace BurnManager
                 {
                     running = false;
                     break;
-                }
-
-                if (batches.Count == 0 && running == false)
-                {
-                    Console.WriteLine("boilerplate"); 
                 }
             }
 

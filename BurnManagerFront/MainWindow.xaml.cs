@@ -83,7 +83,7 @@ namespace BurnManagerFront
                         this.Dispatcher.Invoke(() =>
                         {
                             totalSizeOutput_Name.Content = "Total size (bytes): " + totalSizeValue;
-                            totalCountOutput_Name.Content = "Count: (pending optimization!)";// + api.data.AllFiles.Count;
+                            totalCountOutput_Name.Content = "Count: " + api.Data.AllFiles.Count;
                         });
                     }
                 }
@@ -103,36 +103,50 @@ namespace BurnManagerFront
             };
 
             IReadOnlyList<StorageFile> files = await FrontendFunctions.OpenFilePicker(this);
-            List<FileProps> filesToChecksum = new List<FileProps>();
-            List<FileProps> erroredFiles = new List<FileProps>();
-            int count = 0;
 
-            ChecksumFactory hashtime = new ChecksumFactory();
-            hashtime.callOnCompletionDelegate = onComplete;
-            hashtime.StartQueue();
-            
+            await FrontendFunctions.AddStorageFiles(files, onComplete, api);
+        }
 
-            foreach (StorageFile file in files)
+        private async void AddFolder_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            PendingOperation? thisOperation = PushOperation(true, "Folder Add");
+            if (thisOperation == null) return;
+
+            CompletionCallback onComplete = () =>
             {
-                FileProps filePropped = new FileProps(await FrontendFunctions.StorageFileToFileProps(file));
+                PopOperation(thisOperation);
+            };
 
-                //note: Dispatcher.InvokeAsync is necessary because ObservableCollection cannot be modified by 
-                //threads other than the one that created it
-                await Dispatcher.InvokeAsync(async () => api.AddFile(filePropped));
-
-                filesToChecksum.Add(filePropped);
-                count++;
-                if (count > 100)
-                {
-                    hashtime.AddBatch(filesToChecksum);
-                    filesToChecksum.Clear();
-                    count = 0;
-                }
+            StorageFolder startingFolder = await FrontendFunctions.OpenFolderPicker(this);
+            if (startingFolder == null)
+            {
+                onComplete();
+                return;
             }
 
-            if (filesToChecksum.Count > 0) hashtime.AddBatch(filesToChecksum);
-            hashtime.FinishQueue();
+            LinkedList<StorageFolder> nextFolders = new LinkedList<StorageFolder>();
+            List<StorageFile> files = new List<StorageFile>();
 
+            nextFolders.AddFirst(startingFolder);
+            LinkedListNode<StorageFolder>? currentElement = nextFolders.First;
+
+            while (nextFolders.First != null)
+            {
+                foreach (var file in await nextFolders.First.Value.GetFilesAsync())
+                {
+                    files.Add(file);
+                }
+
+                foreach (var folder in await nextFolders.First.Value.GetFoldersAsync())
+                {
+                    nextFolders.AddLast(folder);
+                }
+
+                nextFolders.RemoveFirst();
+            }
+
+
+            await FrontendFunctions.AddStorageFiles(files, onComplete, api);
         }
 
         private async void MainWindow_RemoveFiles_Button_Click(object sender, RoutedEventArgs e)
