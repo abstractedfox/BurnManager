@@ -181,11 +181,15 @@ namespace BurnManager
         }
 
         //Generates checksums for all passed files. Errored files will be returned in errorOutput
+        //Explicitly setting MaxDegreeOfParallelism is necessary as it otherwise uses whatever threads
+        //the thread pool gives it, and it doesn't seem to limit that to what the hardware has available by default
         public static async Task GenerateChecksums(ICollection<FileProps> files, bool overwriteExistingChecksum, ICollection<FileProps> errorOutput)
         {
             object _lockObj = new object();
             await Task.Run(() => { 
-                ParallelLoopResult result = Parallel.ForEach(files, file => {
+                ParallelLoopResult result = Parallel.ForEach(files, 
+                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount}, 
+                    file => {
                     using (MD5 hashtime = MD5.Create())
                     {
                         lock (file.LockObj)

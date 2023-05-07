@@ -145,7 +145,6 @@ namespace BurnManagerFront
                 nextFolders.RemoveFirst();
             }
 
-
             await FrontendFunctions.AddStorageFiles(files, onComplete, api);
         }
 
@@ -217,7 +216,7 @@ namespace BurnManagerFront
         {
             lock (LockObj)
             {
-                if (_pendingOperations.Count > 0)
+                if (_pendingOperations.Count > 0 && _pendingOperations.Where(operation => operation.Blocking == true).Any())
                 {
                     FrontendFunctions.OperationsInProgressDialog(_pendingOperations);
                     return null;
