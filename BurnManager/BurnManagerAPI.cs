@@ -181,11 +181,15 @@ namespace BurnManager
         }
 
         //Generates checksums for all passed files. Errored files will be returned in errorOutput
+        //Explicitly setting MaxDegreeOfParallelism is necessary as it otherwise uses whatever threads
+        //the thread pool gives it, and it doesn't seem to limit that to what the hardware has available by default
         public static async Task GenerateChecksums(ICollection<FileProps> files, bool overwriteExistingChecksum, ICollection<FileProps> errorOutput)
         {
             object _lockObj = new object();
             await Task.Run(() => { 
-                ParallelLoopResult result = Parallel.ForEach(files, file => {
+                ParallelLoopResult result = Parallel.ForEach(files, 
+                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount}, 
+                    file => {
                     using (MD5 hashtime = MD5.Create())
                     {
                         lock (file.LockObj)
@@ -231,31 +235,33 @@ namespace BurnManager
         {
             object _lockObj = new object();
             await Task.Run(() => {
-                ParallelLoopResult result = Parallel.ForEach(files, file => {
-                    using (MD5 hashtime = MD5.Create())
-                    {
-                        lock (file.Item1.LockObj)
+                ParallelLoopResult result = Parallel.ForEach(files, 
+                    //new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount - 1},
+                    file => {
+                        using (MD5 hashtime = MD5.Create())
                         {
-                            if (!overwriteExistingChecksum && file.Item1.HasChecksum) return;
-                            if (!FileExists(file.Item1))
+                            lock (file.Item1.LockObj)
                             {
-                                lock (_lockObj)
+                                if (!overwriteExistingChecksum && file.Item1.HasChecksum) return;
+                                if (!FileExists(file.Item1))
                                 {
-                                    file.Item1.Status = FileStatus.FILE_MISSING;
-                                    errorOutput.Add(file.Item1);
-                                    return;
+                                    lock (_lockObj)
+                                    {
+                                        file.Item1.Status = FileStatus.FILE_MISSING;
+                                        errorOutput.Add(file.Item1);
+                                        return;
+                                    }
+                                }
+                                try
+                                {
+                                    file.Item1.Checksum = hashtime.ComputeHash(file.Item2);
+                                }
+                                catch (UnauthorizedAccessException)
+                                {
+                                    AccessError(file.Item1);
                                 }
                             }
-                            try
-                            {
-                                file.Item1.Checksum = hashtime.ComputeHash(file.Item2);
-                            }
-                            catch (UnauthorizedAccessException)
-                            {
-                                AccessError(file.Item1);
-                            }
                         }
-                    }
                 });
             });
         }

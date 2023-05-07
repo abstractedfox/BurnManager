@@ -42,6 +42,16 @@ namespace BurnManager
         FINISHED_WITH_ERRORS
     }
 
+    public enum RunningOperations
+    {
+        uninitialized,
+        NONE,
+        GATHERING_FILES,
+        ADDING_FILES,
+        CHECKSUMMING_FILES,
+        SORTING_BURNS
+    }
+
     //Used to identify files which are meant to be kept together when algorithmically sorting.
     public class MonolithicCollection
     {
