@@ -79,12 +79,24 @@ namespace BurnManagerFront
                     {
                         //note: can behave erratically if we try to grab data from the api while on the UI thread
                         ulong totalSizeValue = api.Data.AllFiles.TotalSizeInBytes;
+                        int totalCountValue = api.Data.AllFiles.Count;
 
                         this.Dispatcher.Invoke(() =>
                         {
-                            totalSizeOutput_Name.Content = "Total size (bytes): " + totalSizeValue;
-                            totalCountOutput_Name.Content = "Count: " + api.Data.AllFiles.Count;
+                            try
+                            {
+                                totalSizeOutput_Name.Content = "Total size (bytes): " + totalSizeValue;
+                                totalCountOutput_Name.Content = "Count: " + totalCountValue;
+                                return;
+                            }
+                            catch(Exception e)
+                            {
+                                Console.WriteLine("boilerplate");
+                            }
+                        //}
                         });
+
+                        Console.WriteLine("boilerplate");
                     }
                 }
             };
@@ -123,6 +135,17 @@ namespace BurnManagerFront
                 onComplete();
                 return;
             }
+
+
+            AddFoldersRecursive folderAdd = new AddFoldersRecursive(100, api);
+            folderAdd.AddFolderToQueue(startingFolder);
+
+            //await folderAdd.StartOperation();
+            folderAdd.StartOperation();
+            folderAdd.EndWhenComplete();
+
+            return;
+
 
             LinkedList<StorageFolder> nextFolders = new LinkedList<StorageFolder>();
             List<StorageFile> files = new List<StorageFile>();

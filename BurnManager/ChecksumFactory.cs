@@ -13,10 +13,9 @@ using System.Threading.Tasks;
 
 namespace BurnManager
 {
-    public class ChecksumFactory
+    public class ChecksumFactory : ILongRunningProcedure
     {
         private Task? _queueTask;
-        public delegate void CallWhenComplete();
         public CompletionCallback? callOnCompletionDelegate { get; set; }
 
         private object _lockObj = new object();
@@ -49,7 +48,7 @@ namespace BurnManager
         }
 
         //Start processing whatever is in the queue. The batch loop will run regardless of contents until FinishQueue() is called.
-        public async Task StartQueue()
+        public async Task StartOperation()
         {
             lock (_lockObj)
             {
@@ -57,11 +56,13 @@ namespace BurnManager
                 running = true;
             }
 
-            await Task.Run(() => { _queueTask = _runBatch(); });
+            //await Task.Run(() => { _queueTask = _runBatch(); });
+            _queueTask = _runBatch();
+            await _queueTask;
         }
 
         //Call when finished passing new batches. All queued batches will complete, and the batch task will return.
-        public void FinishQueue()
+        public void EndWhenComplete()
         {
             lock (_lockObj)
             {
@@ -70,7 +71,7 @@ namespace BurnManager
         }
         
         //The batch process will end after the current job finishes regardless of queued work
-        public void FinishImmediately()
+        public void EndImmediately()
         {
             halt = true;
         }

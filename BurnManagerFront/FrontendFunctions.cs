@@ -65,7 +65,7 @@ namespace BurnManagerFront
 
             ChecksumFactory hashtime = new ChecksumFactory();
             hashtime.callOnCompletionDelegate = onComplete;
-            hashtime.StartQueue();
+            hashtime.StartOperation();
 
 
             foreach (StorageFile file in files)
@@ -86,7 +86,7 @@ namespace BurnManagerFront
             }
 
             if (filesToChecksum.Count > 0) hashtime.AddBatch(filesToChecksum);
-            hashtime.FinishQueue();
+            hashtime.EndWhenComplete();
         }
 
         public static async Task<FileProps> StorageFileToFileProps(StorageFile file)
