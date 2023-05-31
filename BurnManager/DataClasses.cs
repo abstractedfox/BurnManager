@@ -112,6 +112,7 @@ namespace BurnManager
         public object LockObj = new object();
         private bool _blocking = false;
         public string? Name;
+        public ILongRunningProcedure? ProcedureInstance = null; //An optional instance of a long running procedure
         public bool Blocking
         {
             get

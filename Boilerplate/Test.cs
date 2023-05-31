@@ -30,6 +30,11 @@ namespace BurnManager
             Console.WriteLine("Plate boiled");
         }
 
+        static void TestAddFoldersRecursive()
+        {
+            
+        }
+
         static void TestSorting()
         {
             Console.WriteLine("boilerplate alert! remember to put in a valid local directory & set a breakpoint at the end");

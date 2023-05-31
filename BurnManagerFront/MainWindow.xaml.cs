@@ -135,12 +135,20 @@ namespace BurnManagerFront
                 onComplete();
                 return;
             }
-
-
-            AddFoldersRecursive folderAdd = new AddFoldersRecursive(100, api);
+            /*
+            AddFoldersRecursive folderAdd = new AddFoldersRecursive(api);
+            thisOperation.ProcedureInstance = folderAdd;
+            folderAdd.callOnCompletionDelegate = onComplete;
             folderAdd.AddFolderToQueue(startingFolder);
 
-            //await folderAdd.StartOperation();
+            folderAdd.StartOperation();
+            folderAdd.EndWhenComplete();*/
+
+            AddFoldersRecursiveAndGenerateChecksums folderAdd = new AddFoldersRecursiveAndGenerateChecksums(api, onComplete);
+            thisOperation.ProcedureInstance = folderAdd;
+            folderAdd.callOnCompletionDelegate = onComplete;
+            folderAdd.AddFolderToQueue(startingFolder);
+
             folderAdd.StartOperation();
             folderAdd.EndWhenComplete();
 
@@ -228,9 +236,16 @@ namespace BurnManagerFront
 
         private void _debugButtonClick(object sender, RoutedEventArgs e)
         {
-            //VolumePropsDetails a = new VolumePropsDetails();
-            //a.Show();
-            //a.SetVolumeProps(api.Data.AllVolumes.First());
+            lock (LockObj)
+            {
+                foreach(var operation in _pendingOperations)
+                {
+                    if (!(operation.ProcedureInstance is null))
+                    {
+                        operation.ProcedureInstance.EndImmediately();
+                    }
+                }
+            }
         }
 
         //Push a new operation to _pendingOperations after checking whether a new operation can be added.

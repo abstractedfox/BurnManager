@@ -8,10 +8,12 @@ namespace BurnManager
 {
     public interface ILongRunningProcedure
     {
-        public CompletionCallback? callOnCompletionDelegate { get; set; }
+        public CompletionCallback? callOnCompletionDelegate { get; set; } //Delegate to call when the running process completes
+
         public bool IsComplete { get; }
 
-        public Task StartOperation();
+        //Start running the operationo
+        public void StartOperation();
 
         //Indicate that the operation should finish whatever is in queue and exit.
         public void EndWhenComplete();

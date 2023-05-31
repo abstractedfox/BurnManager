@@ -11,43 +11,56 @@ namespace BurnManager
     public class AddFoldersRecursive : ILongRunningProcedure
     {
         private Task? _addFoldersTask;
+
         public CompletionCallback? callOnCompletionDelegate { get; set; }
-        private bool keepRunning = false; //Should the loop continue to run
-        private bool running = false; //Is the procedure running
-        private bool halt = false; //Has the procedure been instructed to halt
-        public bool StopWhenComplete { get; set; } = true;
+
+        protected bool _shouldAlwaysRun = false; //Should the loop continue to run if there is no data in queue
+        protected bool _isCurrentlyRunning = false; //Is the procedure running
+        protected bool _halt = false; //Has the procedure been instructed to halt
+
         private object _lockObj = new object();
-        private int _batchQueueSize = 100;
-        private BurnManagerAPI _api;
+        protected BurnManagerAPI _api;
 
         public bool IsComplete
         {
             get
             {
-                return running;
+                return _isCurrentlyRunning;
             }
         }
-        
+
+        //Convenient buffer for the checksum queue
+        private List<FileProps> _checksumBufferOutput = new List<FileProps>();
+
+        //Get the contents of the checksum buffer and clear it. If sizeLimit > 0, it will return null unless there are 'sizeLimit' elements in the buffer.
+        //If the procedure is not currently running, it will return whatever is in the buffer regardless of size limit.
+        public IReadOnlyList<FileProps>? GetBufferContentsAndClear(int sizeLimit)
+        {
+            lock (_lockObj)
+            {
+                if (_isCurrentlyRunning && sizeLimit > 0 && _checksumBufferOutput.Count < sizeLimit) return null;
+
+                List<FileProps> output = new List<FileProps>(_checksumBufferOutput);
+                _checksumBufferOutput.Clear();
+                return output.AsReadOnly();
+            }
+        }
 
         private LinkedList<StorageFolder> _nextFolders = new LinkedList<StorageFolder>();
-        //private List<FileProps> _erroredFiles;
 
-        private ChecksumFactory checksumFactory = new ChecksumFactory();
-
-        public AddFoldersRecursive(int batchQueueSize, BurnManagerAPI api)
+        public AddFoldersRecursive(BurnManagerAPI api)
         {
-            _batchQueueSize = batchQueueSize;
             _api = api;
         }
 
-        //Should not return until checksumFactory.StartOperation() returns
-        public async Task StartOperation()
+        public void StartOperation()
         {
-            keepRunning = true;
-            _addFoldersTask = _mainTask();
-            await checksumFactory.StartOperation();
-
-            _end();
+            lock (_lockObj)
+            {
+                if (_isCurrentlyRunning) return;
+                _shouldAlwaysRun = true;
+                _addFoldersTask = _mainTask();
+            }
         }
 
         public void AddFolderToQueue(StorageFolder folder)
@@ -60,22 +73,22 @@ namespace BurnManager
 
         private async Task _mainTask()
         {
-            await Task.Run(async () => {
-                running = true;
-                List<FileProps> filesToChecksum = new List<FileProps>();
-                while (keepRunning || _nextFolders.Count > 0)
+            Func<bool> loopCondition = () =>
+            {
+                lock (_lockObj)
                 {
-                    StorageFolder currentFolder;
+                    return (_shouldAlwaysRun || _nextFolders.Count > 0) && !_halt;
+                }
+            };
+
+            await Task.Run(async () => {
+                _isCurrentlyRunning = true;
+                while (loopCondition())
+                {
+
                     LinkedListNode<StorageFolder> currentNode;
                     lock (_lockObj)
                     {
-                        if (_nextFolders.Count == 0 && StopWhenComplete)
-                        {
-                            keepRunning = false;
-                            break;
-                        }
-
-                        currentFolder = _nextFolders.First();
                         if (_nextFolders.First != null)
                         {
                             currentNode = _nextFolders.First;
@@ -88,25 +101,22 @@ namespace BurnManager
 
                     foreach (var file in await currentNode.Value.GetFilesAsync())
                     {
-                        if (halt)
+                        if (_halt)
                         {
                             break;
                         }
 
                         FileProps thisFile = await FrontendFunctions.StorageFileToFileProps(file);
                         _api.AddFile(thisFile);
-                        filesToChecksum.Add(thisFile);
-                        
-
-                        if (filesToChecksum.Count == _batchQueueSize)
+                        lock (_lockObj)
                         {
-                            checksumFactory.AddBatch(filesToChecksum);
-                            filesToChecksum.Clear();
+                            _checksumBufferOutput.Add(thisFile);
                         }
                     }
+
                     foreach (var folder in await currentNode.Value.GetFoldersAsync())
                     {
-                        if (halt)
+                        if (_halt)
                         {
                             break;
                         }
@@ -117,43 +127,30 @@ namespace BurnManager
                         }
                     }
 
-                    _nextFolders.Remove(currentNode);
+                    lock (_lockObj)
+                    {
+                        _nextFolders.Remove(currentNode);
+                    }
                 }
 
-
-                if (halt)
-                {
-                    checksumFactory.EndImmediately();
-                    return;
-                }
-
-                if (filesToChecksum.Count > 0)
-                {
-                    checksumFactory.AddBatch(filesToChecksum);
-                    filesToChecksum.Clear();
-                }
+                _end();
             });
         }
 
-        
-
         public void EndWhenComplete()
         {
-            checksumFactory.EndWhenComplete();
-            keepRunning = false;
+            _shouldAlwaysRun = false;
         }
 
         public void EndImmediately()
         {
-            halt = true;
-            keepRunning = false;
-            checksumFactory.EndImmediately();
+            _halt = true;
+            _shouldAlwaysRun = false;
         }
 
-        //Should only be called when all tasks have completed
         private void _end()
         {
-            running = false;
+            _isCurrentlyRunning = false;
             if (callOnCompletionDelegate != null)
             {
                 callOnCompletionDelegate();

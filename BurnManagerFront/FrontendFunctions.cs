@@ -74,7 +74,6 @@ namespace BurnManagerFront
 
                 //note: Dispatcher.InvokeAsync is necessary because ObservableCollection cannot be modified by 
                 //threads other than the one that created it
-                //await Dispatcher.InvokeAsync(async () => api.AddFile(filePropped));
                 api.AddFile(filePropped);
 
                 filesToChecksum.Add(filePropped);
