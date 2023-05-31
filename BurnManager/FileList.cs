@@ -32,7 +32,10 @@ namespace BurnManager
                 lock (LockObj)
                 {
                     _totalSizeInBytesValue = value;
-                    if (!(OnUpdate is null)) OnUpdate();
+                    if (!(OnUpdate is null))
+                    {
+                        OnUpdate();
+                    }
                 }
             }
         }
@@ -132,6 +135,8 @@ namespace BurnManager
         public int Count {
             get
             {
+                //boilerplate
+                Console.WriteLine("boilerplate");
                 lock (LockObj)
                 {
                     return _files.Count();
@@ -162,6 +167,7 @@ namespace BurnManager
                         if (item.SizeInBytes != null)
                         {
                             _totalSizeInBytes += (ulong)item.SizeInBytes;
+                            Console.WriteLine("boilerplate");
                         }
                     }
                     else
@@ -170,6 +176,7 @@ namespace BurnManager
                     }
                 }
             }
+            Console.WriteLine("boilerplate");
         }
 
         public virtual ResultCode Add(KeyValuePair<string, FileProps> item)

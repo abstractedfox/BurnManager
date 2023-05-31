@@ -13,14 +13,13 @@ using System.Threading.Tasks;
 
 namespace BurnManager
 {
-    public class ChecksumFactory
+    public class ChecksumFactory : ILongRunningProcedure
     {
         private Task? _queueTask;
-        public delegate void CallWhenComplete();
         public CompletionCallback? callOnCompletionDelegate { get; set; }
 
         private object _lockObj = new object();
-        private bool running = false;
+        private bool _shouldAlwaysRun = false;
         public bool IsComplete
         {
             get
@@ -31,7 +30,7 @@ namespace BurnManager
                 }
             }
         }
-        private bool halt = false;
+        private bool _halt = false;
         private List<List<FileProps>> batches = new List<List<FileProps>>();
         private List<List<FileProps>> erroredFiles = new List<List<FileProps>>();
 
@@ -49,75 +48,79 @@ namespace BurnManager
         }
 
         //Start processing whatever is in the queue. The batch loop will run regardless of contents until FinishQueue() is called.
-        public async Task StartQueue()
+        public void StartOperation()
         {
             lock (_lockObj)
             {
-                if (running) return;
-                running = true;
+                if (_shouldAlwaysRun) return;
+                _shouldAlwaysRun = true;
             }
 
-            await Task.Run(() => { _queueTask = _runBatch(); });
+            _queueTask = _mainTask();
         }
 
         //Call when finished passing new batches. All queued batches will complete, and the batch task will return.
-        public void FinishQueue()
+        public void EndWhenComplete()
         {
             lock (_lockObj)
             {
-                running = false;
+                _shouldAlwaysRun = false;
             }
         }
         
         //The batch process will end after the current job finishes regardless of queued work
-        public void FinishImmediately()
+        public void EndImmediately()
         {
-            halt = true;
+            _halt = true;
         }
 
-        private async Task _runBatch()
+        private async Task _mainTask()
         {
-            //int batchCount = 0;
-            //lock (_lockObj) batchCount = batches.Count;
             Func<bool> loopCondition = () =>
             {
                 lock (_lockObj)
                 {
-                    return running || batches.Count > 0;
+                    if (!(!_halt && (_shouldAlwaysRun || batches.Count > 0)))
+                    {
+                        Console.WriteLine("boilerplate!");
+                    }
+                    return !_halt && (_shouldAlwaysRun || batches.Count > 0);
                 }
             };
 
-            while (loopCondition())
-            {
-                List<FileProps> thisBatch = new List<FileProps>();
-
-                //Do not block AddBatch by remaining locked while a batch is processing
-                lock (_lockObj)
+            await Task.Run(async () => { 
+                while (loopCondition())
                 {
-                    if (batches.Count > 0)
+                    List<FileProps> thisBatch = new List<FileProps>();
+
+                    //Do not block AddBatch by remaining locked while a batch is processing
+                    lock (_lockObj)
                     {
-                        var nextBatch = batches.Last();
-                        thisBatch = new List<FileProps>(nextBatch);
-                        batches.RemoveAt(batches.Count - 1);
-                        //batchCount = batches.Count;
+                        if (batches.Count > 0)
+                        {
+                            var nextBatch = batches.Last();
+                            thisBatch = new List<FileProps>(nextBatch);
+                            batches.RemoveAt(batches.Count - 1);
+                        }
+                        else continue;
                     }
-                    else continue;
+
+                    List<FileProps> errorOut = new List<FileProps>();
+                    await BurnManagerAPI.GenerateChecksums(thisBatch, true, errorOut);
+                    if (errorOut.Count > 0) erroredFiles.Add(errorOut);
+
+                    if (_halt)
+                    {
+                        _shouldAlwaysRun = false;
+                        break;
+                    }
                 }
 
-                List<FileProps> errorOut = new List<FileProps>();
-                await BurnManagerAPI.GenerateChecksums(thisBatch, true, errorOut);
-                if (errorOut.Count > 0) erroredFiles.Add(errorOut);
-                if (halt)
+                if (callOnCompletionDelegate != null)
                 {
-                    running = false;
-                    break;
+                    callOnCompletionDelegate();
                 }
-            }
-
-            if (callOnCompletionDelegate != null)
-            {
-                callOnCompletionDelegate();
-            }
+            });
         }
 
 

@@ -65,7 +65,7 @@ namespace BurnManagerFront
 
             ChecksumFactory hashtime = new ChecksumFactory();
             hashtime.callOnCompletionDelegate = onComplete;
-            hashtime.StartQueue();
+            hashtime.StartOperation();
 
 
             foreach (StorageFile file in files)
@@ -74,7 +74,6 @@ namespace BurnManagerFront
 
                 //note: Dispatcher.InvokeAsync is necessary because ObservableCollection cannot be modified by 
                 //threads other than the one that created it
-                //await Dispatcher.InvokeAsync(async () => api.AddFile(filePropped));
                 api.AddFile(filePropped);
 
                 filesToChecksum.Add(filePropped);
@@ -86,7 +85,7 @@ namespace BurnManagerFront
             }
 
             if (filesToChecksum.Count > 0) hashtime.AddBatch(filesToChecksum);
-            hashtime.FinishQueue();
+            hashtime.EndWhenComplete();
         }
 
         public static async Task<FileProps> StorageFileToFileProps(StorageFile file)
