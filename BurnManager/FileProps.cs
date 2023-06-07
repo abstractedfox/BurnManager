@@ -67,6 +67,17 @@ namespace BurnManager
             }
         }
 
+        public FileProps(FileInfo file)
+        {
+            lock (LockObj)
+            {
+                FileName = file.Name;
+                OriginalPath = file.FullName;
+                SizeInBytes = (ulong?)file.Length;
+                LastModified = file.LastWriteTimeUtc;
+            }
+        }
+
         [JsonConstructor]
         public FileProps(string? FileName, string? OriginalPath, ulong? SizeInBytes, DateTimeOffset? LastModified,
             List<DiscAndBurnStatus> RelatedVolumes, byte[]? Checksum, HashType? HashAlgUsed, DateTimeOffset? TimeAdded,

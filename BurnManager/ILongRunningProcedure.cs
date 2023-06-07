@@ -8,7 +8,7 @@ namespace BurnManager
 {
     public interface ILongRunningProcedure
     {
-        public CompletionCallback? callOnCompletionDelegate { get; set; } //Delegate to call when the running process completes
+        public Action? callOnCompletionDelegate { get; set; } //Delegate to call when the running process completes
 
         public bool IsComplete { get; }
 

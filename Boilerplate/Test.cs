@@ -18,10 +18,12 @@ namespace BurnManager
         static void Main(string[] args)
         {
             Console.WriteLine("Hello, World!");
-            TestDataTypes();
-            TestAPI();
-            TestJSONSerializer();
-            TestJSONSerializerBigger();
+
+            TestAddFoldersRecursive();
+            //TestDataTypes();
+            //TestAPI();
+            //TestJSONSerializer();
+            //TestJSONSerializerBigger();
             //TestFileListOverride();
             //TestDescendingSort();
             //TestSorting();
@@ -32,15 +34,58 @@ namespace BurnManager
 
         static void TestAddFoldersRecursive()
         {
-            
+            string rootPath = @"D:\burnmanager test with local files\film scans";
+            BurnManagerAPI api = new BurnManagerAPI();
+            AddFoldersRecursive folderAdd = new AddFoldersRecursive(api);
+
+            folderAdd.AddFolderToQueue(new DirectoryInfo(rootPath));
+
+            Action onComplete = () =>
+            {
+                Console.WriteLine("total files added: " + api.Data.AllFiles.Count);
+                foreach(var item in api.Data.AllFiles)
+                {
+                    //Console.WriteLine(item.FileName);
+                    //Console.WriteLine(item.OriginalPath);
+                }
+            };
+            folderAdd.callOnCompletionDelegate = onComplete;
+
+            folderAdd.StartOperation();
+            folderAdd.EndWhenComplete();
+
+            while (!folderAdd.IsComplete) ; //boilerplate!
+
+            Console.WriteLine("Now testing AddFoldersRecursiveAndGenerateChecksums");
+
+            BurnManagerAPI api2 = new BurnManagerAPI();
+            Action onComplete2 = () =>
+            {
+                foreach(var item in api2.Data.AllFiles)
+                {
+                    Console.Write(item.FileName + " hash: ");
+                    foreach (var digit in item.Checksum)
+                    {
+                        Console.Write(digit + " ");
+                    }
+                    Console.WriteLine();
+                }
+            };
+
+            AddFoldersRecursiveAndGenerateChecksums checksumtime = new AddFoldersRecursiveAndGenerateChecksums(api2, onComplete2);
+
+            checksumtime.AddFolderToQueue(new DirectoryInfo(rootPath));
+
+            checksumtime.StartOperation();
+
+            checksumtime.EndWhenComplete();
         }
 
         static void TestSorting()
         {
             Console.WriteLine("boilerplate alert! remember to put in a valid local directory & set a breakpoint at the end");
-            string path = "\\\\CHRISSERVER\\Data\\Etc\\buildings and spaces";
-            path = "C:\\Users\\coldc\\Downloads";
-            //path = "\\\\CHRISSERVER\\Data\\Etc\\Downloaded items\\furries";
+            string path = "";
+            path = "";
             string[] paths = Directory.GetFiles(path);
             FileList files = new FileList();
 

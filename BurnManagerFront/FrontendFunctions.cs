@@ -57,7 +57,7 @@ namespace BurnManagerFront
             return folder;
         }
 
-        public static async Task AddStorageFiles (IReadOnlyList<StorageFile> files, CompletionCallback onComplete, BurnManagerAPI api)
+        public static async Task AddStorageFiles (IReadOnlyList<StorageFile> files, Action onComplete, BurnManagerAPI api)
         {
             List<FileProps> filesToChecksum = new List<FileProps>();
             List<FileProps> erroredFiles = new List<FileProps>();

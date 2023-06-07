@@ -109,7 +109,7 @@ namespace BurnManagerFront
             PendingOperation? thisOperation = PushOperation(true, "File Add");
             if (thisOperation == null) return;
 
-            CompletionCallback onComplete = () =>
+            Action onComplete = () =>
             {
                 PopOperation(thisOperation);
             };
@@ -124,7 +124,7 @@ namespace BurnManagerFront
             PendingOperation? thisOperation = PushOperation(true, "Folder Add");
             if (thisOperation == null) return;
 
-            CompletionCallback onComplete = () =>
+            Action onComplete = () =>
             {
                 PopOperation(thisOperation);
             };
@@ -135,48 +135,16 @@ namespace BurnManagerFront
                 onComplete();
                 return;
             }
-            /*
-            AddFoldersRecursive folderAdd = new AddFoldersRecursive(api);
+
+            BurnManager.AddFoldersRecursiveAndGenerateChecksums folderAdd = new BurnManager.AddFoldersRecursiveAndGenerateChecksums(api, onComplete);
             thisOperation.ProcedureInstance = folderAdd;
             folderAdd.callOnCompletionDelegate = onComplete;
-            folderAdd.AddFolderToQueue(startingFolder);
-
-            folderAdd.StartOperation();
-            folderAdd.EndWhenComplete();*/
-
-            AddFoldersRecursiveAndGenerateChecksums folderAdd = new AddFoldersRecursiveAndGenerateChecksums(api, onComplete);
-            thisOperation.ProcedureInstance = folderAdd;
-            folderAdd.callOnCompletionDelegate = onComplete;
-            folderAdd.AddFolderToQueue(startingFolder);
+            folderAdd.AddFolderToQueue(new DirectoryInfo(startingFolder.Path));
 
             folderAdd.StartOperation();
             folderAdd.EndWhenComplete();
 
             return;
-
-
-            LinkedList<StorageFolder> nextFolders = new LinkedList<StorageFolder>();
-            List<StorageFile> files = new List<StorageFile>();
-
-            nextFolders.AddFirst(startingFolder);
-            LinkedListNode<StorageFolder>? currentElement = nextFolders.First;
-
-            while (nextFolders.First != null)
-            {
-                foreach (var file in await nextFolders.First.Value.GetFilesAsync())
-                {
-                    files.Add(file);
-                }
-
-                foreach (var folder in await nextFolders.First.Value.GetFoldersAsync())
-                {
-                    nextFolders.AddLast(folder);
-                }
-
-                nextFolders.RemoveFirst();
-            }
-
-            await FrontendFunctions.AddStorageFiles(files, onComplete, api);
         }
 
         private async void MainWindow_RemoveFiles_Button_Click(object sender, RoutedEventArgs e)

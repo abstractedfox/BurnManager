@@ -167,7 +167,6 @@ namespace BurnManager
                         if (item.SizeInBytes != null)
                         {
                             _totalSizeInBytes += (ulong)item.SizeInBytes;
-                            Console.WriteLine("boilerplate");
                         }
                     }
                     else
@@ -176,7 +175,6 @@ namespace BurnManager
                     }
                 }
             }
-            Console.WriteLine("boilerplate");
         }
 
         public virtual ResultCode Add(KeyValuePair<string, FileProps> item)
