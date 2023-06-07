@@ -5,14 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BurnManagerFront
+namespace BurnManager
 {
-    internal class AddFoldersRecursiveAndGenerateChecksums : AddFoldersRecursive
+    public class AddFoldersRecursiveAndGenerateChecksums : AddFoldersRecursive
     {
-        public new CompletionCallback? callOnCompletionDelegate { get; set; }
+        public new Action? callOnCompletionDelegate { get; set; }
         private ChecksumFactory _checksumProcedure = new ChecksumFactory();
         private Task? _checksumHandoffTask;
-        public AddFoldersRecursiveAndGenerateChecksums(BurnManagerAPI api, CompletionCallback callback) : base(api)
+        public AddFoldersRecursiveAndGenerateChecksums(BurnManagerAPI api, Action callback) : base(api)
         {
             callOnCompletionDelegate = callback;
         }
@@ -42,7 +42,7 @@ namespace BurnManagerFront
             {
                 while (base._isCurrentlyRunning)
                 {
-                    IReadOnlyList<FileProps>? checksumBuffer = base.GetBufferContentsAndClear(100);
+                    IReadOnlyList<FileProps>? checksumBuffer = base.GetBufferContentsAndClear(50);
                     if (!(checksumBuffer is null))
                     {
                         _checksumProcedure.AddBatch(checksumBuffer);

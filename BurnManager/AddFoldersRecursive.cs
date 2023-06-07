@@ -1,10 +1,9 @@
-﻿using BurnManagerFront;
+﻿
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Windows.Storage;
 
 namespace BurnManager
 {
@@ -12,7 +11,7 @@ namespace BurnManager
     {
         private Task? _addFoldersTask;
 
-        public CompletionCallback? callOnCompletionDelegate { get; set; }
+        public Action? callOnCompletionDelegate { get; set; }
 
         protected bool _shouldAlwaysRun = false; //Should the loop continue to run if there is no data in queue
         protected bool _isCurrentlyRunning = false; //Is the procedure running
@@ -46,7 +45,7 @@ namespace BurnManager
             }
         }
 
-        private LinkedList<StorageFolder> _nextFolders = new LinkedList<StorageFolder>();
+        private LinkedList<DirectoryInfo> _nextFolders = new LinkedList<DirectoryInfo>();
 
         public AddFoldersRecursive(BurnManagerAPI api)
         {
@@ -63,7 +62,7 @@ namespace BurnManager
             }
         }
 
-        public void AddFolderToQueue(StorageFolder folder)
+        public void AddFolderToQueue(DirectoryInfo folder)
         {
             lock (_lockObj)
             {
@@ -86,7 +85,7 @@ namespace BurnManager
                 while (loopCondition())
                 {
 
-                    LinkedListNode<StorageFolder> currentNode;
+                    LinkedListNode<DirectoryInfo> currentNode;
                     lock (_lockObj)
                     {
                         if (_nextFolders.First != null)
@@ -99,14 +98,14 @@ namespace BurnManager
                         }
                     }
 
-                    foreach (var file in await currentNode.Value.GetFilesAsync())
+                    foreach (var file in currentNode.Value.GetFiles())
                     {
                         if (_halt)
                         {
                             break;
                         }
 
-                        FileProps thisFile = await FrontendFunctions.StorageFileToFileProps(file);
+                        FileProps thisFile = new FileProps(file);
                         _api.AddFile(thisFile);
                         lock (_lockObj)
                         {
@@ -114,7 +113,7 @@ namespace BurnManager
                         }
                     }
 
-                    foreach (var folder in await currentNode.Value.GetFoldersAsync())
+                    foreach (var folder in currentNode.Value.GetDirectories())
                     {
                         if (_halt)
                         {

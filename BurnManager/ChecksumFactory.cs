@@ -16,7 +16,7 @@ namespace BurnManager
     public class ChecksumFactory : ILongRunningProcedure
     {
         private Task? _queueTask;
-        public CompletionCallback? callOnCompletionDelegate { get; set; }
+        public Action? callOnCompletionDelegate { get; set; }
 
         private object _lockObj = new object();
         private bool _shouldAlwaysRun = false;
