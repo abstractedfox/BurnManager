@@ -7,51 +7,96 @@ using System.Threading.Tasks;
 
 namespace BurnManager
 {
-    //This class extends callback functionality to a list of 'PendingOperation's for UI convenience 
+    //This class gives callback functionality to a list of 'PendingOperation's for UI convenience
     public class PendingOperations
     {
-        private List<PendingOperation> _pendingOperations = new List<PendingOperation>();
-        public Action? OnEmptyListCallback = null; //A callback to be called whenever the _pendingOperations list is emptied
+        protected object _lockObj = new object();
 
-        public void Add(PendingOperation item)
+        protected List<PendingOperation> _pendingOperations = new List<PendingOperation>();
+
+        //A callback to be called once after the list is emptied
+        private Action? _onEmptyListCallback = null;
+        public Action? OnEmptyListCallback
         {
-
-            _pendingOperations.Add(item);
-            if (!(item.OnAddOperationCallback is null))
+            get
             {
-                item.OnAddOperationCallback();
+                lock (_lockObj)
+                {
+                    return _onEmptyListCallback;
+                }
+            }
+            set
+            {
+                lock (_lockObj)
+                {
+                    _onEmptyListCallback = value;
+                    if (!(_onEmptyListCallback is null))
+                    {
+                        _onEmptyListCallback();
+                    }
+                }
+            }
+        }
+
+        public bool Add(PendingOperation item)
+        {
+            lock (_lockObj)
+            {
+                if (_pendingOperations.Count > 0 && _pendingOperations.Where(operation => operation.Blocking == true).Any())
+                {
+                    return false;
+                }
+
+                _pendingOperations.Add(item);
+                if (!(item.OnAddOperationCallback is null))
+                {
+                    item.OnAddOperationCallback();
+                }
+                return true;
             }
         }
 
         public void Clear()
         {
-            foreach (var operation in _pendingOperations)
+            lock (_lockObj)
             {
-                if (!(operation.OnRemoveOperationCallback is null))
+                foreach (var operation in _pendingOperations)
                 {
-                    operation.OnRemoveOperationCallback();
+                    if (!(operation.OnRemoveOperationCallback is null))
+                    {
+                        operation.OnRemoveOperationCallback();
+                    }
                 }
+                _pendingOperations.Clear();
             }
-            _pendingOperations.Clear();
         }
 
         public bool Contains(PendingOperation item)
         {
-            return _pendingOperations.Contains(item);
+            lock (_lockObj)
+            {
+                return _pendingOperations.Contains(item);
+            }
         }
 
         public bool Remove(PendingOperation item)
         {
-            if (!(item.OnRemoveOperationCallback is null))
+            lock (_lockObj)
             {
-                item.OnRemoveOperationCallback();
-            }
-            if (_pendingOperations.Count == 0 && !(OnEmptyListCallback is null))
-            {
-                OnEmptyListCallback();
-            }
+                if (!(item.OnRemoveOperationCallback is null))
+                {
+                    item.OnRemoveOperationCallback();
+                }
 
-            return _pendingOperations.Remove(item);
+                bool result = _pendingOperations.Remove(item);
+
+                if (_pendingOperations.Count == 0 && !(OnEmptyListCallback is null))
+                {
+                    OnEmptyListCallback();
+                }
+
+                return result;
+            }
         }
     }
 }

@@ -36,9 +36,7 @@ tooling which facilitates the use or operation of such software.
             <TabItem Header="File View">
                 <StackPanel Margin="10,10,10,10" Height="auto">
                     <StackPanel>
-                        <Label>Status: Uninitialized Label</Label>
-                        <Label Content="{Binding DataContext, Mode=OneWay, 
-                        ElementName=statusOutputLabel}"></Label>
+                            <Label x:Name ="statusOutputLabel" Content="Uninitialized Label"></Label>
                     </StackPanel>
                     <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
                              ItemsSource="{Binding DataContext, ElementName=listBox}"
