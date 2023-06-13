@@ -91,12 +91,8 @@ namespace BurnManagerFront
                             }
                             catch(Exception e)
                             {
-                                Console.WriteLine("boilerplate");
                             }
-                        //}
                         });
-
-                        Console.WriteLine("boilerplate");
                     }
                 }
             };
