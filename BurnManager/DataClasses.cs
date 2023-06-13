@@ -107,34 +107,6 @@ namespace BurnManager
         }
     }
 
-    //Describes a pending operation. This is intended for the convenience of the implementation
-    public class PendingOperation{
-        public object LockObj = new object();
-        private bool _blocking = false;
-        public string? Name;
-        public ILongRunningProcedure? ProcedureInstance = null; //An optional instance of a long running procedure
-        public bool Blocking
-        {
-            get
-            {
-                return _blocking;
-            }
-        }
-        
-        //isBlocking should be used to track whether this operation should block other operations from starting.
-        //However, blocking must be implemented by the caller
-        public PendingOperation(bool isBlocking)
-        {
-            _blocking = isBlocking;
-        }
-
-        public PendingOperation(bool isBlocking, string name)
-        {
-            _blocking = isBlocking;
-            Name = name;
-        }
-    }
-
     public class Constants
     {
         public enum Type

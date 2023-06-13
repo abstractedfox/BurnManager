@@ -9,6 +9,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Printing;
+using System.Reflection.Emit;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
@@ -134,7 +136,5 @@ namespace BurnManagerFront
 
             System.Windows.MessageBox.Show(output + "\nPlease wait for these operations to complete.");
         }
-
-        
     }
 }

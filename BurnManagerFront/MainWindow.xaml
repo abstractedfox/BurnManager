@@ -13,9 +13,10 @@ tooling which facilitates the use or operation of such software.
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:BurnManagerFront"
         mc:Ignorable="d"
-        Title="MainWindow" Height="602" Width="800">
+        Title="MainWindow" Height="693" Width="800">
     <Grid Height="auto">
         <StackPanel>
+            
         <DockPanel>
             <Menu DockPanel.Dock="Top">
                 <MenuItem Header="_File">
@@ -34,7 +35,9 @@ tooling which facilitates the use or operation of such software.
         <TabControl>
             <TabItem Header="File View">
                 <StackPanel Margin="10,10,10,10" Height="auto">
-            
+                    <StackPanel>
+                            <Label x:Name ="statusOutputLabel" Content="Uninitialized Label"></Label>
+                    </StackPanel>
                     <ListBox x:Name="listBox" d:ItemsSource="{d:SampleData ItemCount=5}" 
                              ItemsSource="{Binding DataContext, ElementName=listBox}"
                              Margin="20,20,20,20" Height="324" SelectionMode="Extended">
@@ -59,7 +62,7 @@ tooling which facilitates the use or operation of such software.
                                 Width="200"/>
                         </StackPanel>
                         <Button Content="Verify Checksums" Click="VerifyChecksums_ButtonClick"/>
-                        <Button Content="Debug button!" Click="_debugButtonClick"/>
+                        <Button Content="Test button!" Click="_debugButtonClick"/>
                     <Label>Meta Info</Label>
                     <StackPanel Orientation="Horizontal">
                         <Label Content="{Binding DataContext, Mode=OneWay, 

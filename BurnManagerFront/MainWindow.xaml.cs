@@ -42,14 +42,25 @@ namespace BurnManagerFront
         //note: This is only a container; each long-running operation is responsible for its own PendingOperation, describing
         //whether that operation should block other long-running operations, and removing its PendingOperation
         //when completed
-        private List<PendingOperation> _pendingOperations = new List<PendingOperation>();
+        private List<PendingOperation> _pendingOperationsOld = new List<PendingOperation>();
+        private string _statusIndicatorUI = "Status: Uninitialized";
+        private PendingOperationsWPF _pendingOperations;
 
         public MainWindow()
         {
             InitializeComponent();
             api = new BurnManagerAPI();
+            _pendingOperations = new PendingOperationsWPF(this);
 
             _initializeUI();
+            _pendingOperations.OnEmptyListCallback = () =>
+            {
+                lock (LockObj)
+                {
+                    UpdateStatusIndicator("Ready");
+                    Console.WriteLine("boilerplate");
+                }
+            };
         }
 
         private void _initializeUI()
@@ -62,6 +73,8 @@ namespace BurnManagerFront
 
                 burnListBox.DataContext = api.Data.AllVolumes;
                 BindingOperations.EnableCollectionSynchronization(api.Data.AllVolumes, api.LockObj);
+
+                statusOutputLabel.DataContext = _statusIndicatorUI;
             });
 
             if (api.Data.AllFiles.OnUpdate != null)
@@ -91,12 +104,8 @@ namespace BurnManagerFront
                             }
                             catch(Exception e)
                             {
-                                Console.WriteLine("boilerplate");
                             }
-                        //}
                         });
-
-                        Console.WriteLine("boilerplate");
                     }
                 }
             };
@@ -106,27 +115,35 @@ namespace BurnManagerFront
 
         private async void AddFiles_ButtonClick(object sender, RoutedEventArgs e)
         {
-            PendingOperation? thisOperation = PushOperation(true, "File Add");
-            if (thisOperation == null) return;
+            PendingOperation thisOperation = new PendingOperation(true, "File Add");
+            if (!_pendingOperations.Add(thisOperation))
+            {
+                return;
+            }
 
             Action onComplete = () =>
             {
-                PopOperation(thisOperation);
+                _pendingOperations.Remove(thisOperation);
             };
 
             IReadOnlyList<StorageFile> files = await FrontendFunctions.OpenFilePicker(this);
 
             await FrontendFunctions.AddStorageFiles(files, onComplete, api);
+            Console.WriteLine("boilerplate!");
         }
 
         private async void AddFolder_ButtonClick(object sender, RoutedEventArgs e)
         {
-            PendingOperation? thisOperation = PushOperation(true, "Folder Add");
-            if (thisOperation == null) return;
+            PendingOperation thisOperation = new PendingOperation(true, "Folder Add");
+            if (!_pendingOperations.Add(thisOperation))
+            {
+                return;
+            }
 
             Action onComplete = () =>
             {
-                PopOperation(thisOperation);
+                _pendingOperations.Remove(thisOperation);
+                
             };
 
             StorageFolder startingFolder = await FrontendFunctions.OpenFolderPicker(this);
@@ -155,11 +172,14 @@ namespace BurnManagerFront
         public async Task RemoveFilesFromListBox(ListBox box)
         {
             List<FileProps> readFrom;
-            PendingOperation? thisOperation;
+            PendingOperation thisOperation;
             lock (LockObj)
             {
-                thisOperation = PushOperation(true, "Remove Files");
-                if (thisOperation == null) return;
+                thisOperation = new PendingOperation(true, "Remove Files");
+                if (!_pendingOperations.Add(thisOperation))
+                {
+                    return;
+                }
 
                 var items = listBox.SelectedItems;
                 readFrom = new List<FileProps>();
@@ -176,7 +196,7 @@ namespace BurnManagerFront
 
             lock (LockObj)
             {
-                PopOperation(thisOperation);
+                _pendingOperations.Remove(thisOperation);
             }
 
         }
@@ -185,8 +205,11 @@ namespace BurnManagerFront
         {
             lock (LockObj)
             {
-                PendingOperation? thisOperation = PushOperation(true, "Verify checksums sequentially");
-                if (thisOperation == null) return;
+                PendingOperation thisOperation = new PendingOperation(true, "Verify checksums sequentially");
+                if (!_pendingOperations.Add(thisOperation))
+                {
+                    return;
+                }
 
                 List<FileProps> errors = BurnManagerAPI.VerifyChecksumsSequential(api.Data.AllFiles);
                 if (errors.Count == 0)
@@ -198,7 +221,7 @@ namespace BurnManagerFront
                     System.Windows.MessageBox.Show(errors.Count + " errored files were found.");
                 }
                 
-                PopOperation(thisOperation);
+                _pendingOperations.Remove(thisOperation);
             }
         }
 
@@ -206,7 +229,7 @@ namespace BurnManagerFront
         {
             lock (LockObj)
             {
-                foreach(var operation in _pendingOperations)
+                foreach(var operation in _pendingOperationsOld)
                 {
                     if (!(operation.ProcedureInstance is null))
                     {
@@ -218,17 +241,18 @@ namespace BurnManagerFront
 
         //Push a new operation to _pendingOperations after checking whether a new operation can be added.
         //If it can't add a new operation, it returns null.
+        /*
         public PendingOperation? PushOperation(bool isBlocking, string name)
         {
             lock (LockObj)
             {
-                if (_pendingOperations.Count > 0 && _pendingOperations.Where(operation => operation.Blocking == true).Any())
+                if (_pendingOperationsOld.Count > 0 && _pendingOperationsOld.Where(operation => operation.Blocking == true).Any())
                 {
-                    FrontendFunctions.OperationsInProgressDialog(_pendingOperations);
+                    FrontendFunctions.OperationsInProgressDialog(_pendingOperationsOld);
                     return null;
                 }
                 PendingOperation operation = new PendingOperation(isBlocking, name);
-                _pendingOperations.Add(operation);
+                _pendingOperationsOld.Add(operation);
                 return operation;
             }
         }
@@ -237,12 +261,12 @@ namespace BurnManagerFront
         {
             lock (LockObj)
             {
-                if (!_pendingOperations.Remove(operation))
+                if (!_pendingOperationsOld.Remove(operation))
                 {
                     throw new Exception("Running operation was not registered in _operationsPending");
                 }
             }
-        }
+        }*/
         
 
         private MessageBoxResult _saveChangesDialog()
@@ -321,9 +345,9 @@ namespace BurnManagerFront
         {
             lock (LockObj)
             {
-                PendingOperation? thisOperation = PushOperation(true, "Revert to new file");
+                PendingOperation thisOperation = new PendingOperation(true, "Revert to new file");
+                if (!_pendingOperations.Add(thisOperation)) return;
 
-                if (thisOperation == null) return;
                 bool a = api.SavedStateAltered;
                 if (api.SavedStateAltered)
                 {
@@ -337,7 +361,7 @@ namespace BurnManagerFront
                     }
                     if (result == MessageBoxResult.Cancel)
                     {
-                        PopOperation(thisOperation);
+                        _pendingOperations.Remove(thisOperation);
                         return;
                     }
                 }
@@ -345,7 +369,7 @@ namespace BurnManagerFront
                 api.Initialize();
 
                 bool saved = api.SavedStateAltered;
-                PopOperation(thisOperation);
+                _pendingOperations.Remove(thisOperation);
             }
         }
 
@@ -353,13 +377,13 @@ namespace BurnManagerFront
         {
             lock (LockObj)
             {
-                PendingOperation? thisOperation = PushOperation(true, "File Save");
-                if (thisOperation == null) return;
+                PendingOperation thisOperation = new PendingOperation(true, "File Save");
+                if (!_pendingOperations.Add(thisOperation)) return;
 
                 string serialized = api.Serialize();
                 _openSaveDialog(serialized);
 
-                PopOperation(thisOperation);
+                _pendingOperations.Remove(thisOperation);
             }
         }
 
@@ -368,8 +392,8 @@ namespace BurnManagerFront
             await Task.Run(() => { 
                 lock (LockObj)
                 {
-                    PendingOperation? thisOperation = PushOperation(true, "File Open");
-                    if (thisOperation == null) return;
+                    PendingOperation thisOperation = new PendingOperation(true, "File Open");
+                    if (!_pendingOperations.Add(thisOperation)) return;
 
                     if (api.SavedStateAltered)
                     {
@@ -378,13 +402,13 @@ namespace BurnManagerFront
                         {
                             if (!_openSaveDialog(api.Serialize()))
                             {
-                                PopOperation(thisOperation);
+                                _pendingOperations.Remove(thisOperation);
                                 return;
                             }
                         }
                         if (result == MessageBoxResult.Cancel)
                         {
-                            PopOperation(thisOperation);
+                            _pendingOperations.Remove(thisOperation);
                             return;
                         }
                     }
@@ -392,7 +416,7 @@ namespace BurnManagerFront
                     string? serialized = _openOpenDialog();
                     if (serialized == null)
                     {
-                        PopOperation(thisOperation);
+                        _pendingOperations.Remove(thisOperation);
                         return;
                     }
 
@@ -402,21 +426,21 @@ namespace BurnManagerFront
                         _initializeUI();
                     }
 
-                    PopOperation(thisOperation);
+                    _pendingOperations.Remove(thisOperation);
                 }
             });
         }
 
         private async void GenerateBurns_ButtonClick(object sender, RoutedEventArgs e)
         {
-            PendingOperation? thisOperation;
+            PendingOperation thisOperation;
             ulong volumeSize = 0;
             ulong clusterSize = 0;
 
             lock (LockObj)
             {
-                thisOperation = PushOperation(true, "File Sort");
-                if (thisOperation == null) return;
+                thisOperation = new PendingOperation(true, "File Sort");
+                if (!_pendingOperations.Add(thisOperation)) return;
 
                 try
                 {
@@ -426,13 +450,13 @@ namespace BurnManagerFront
                 catch (FormatException)
                 {
                     System.Windows.MessageBox.Show("Please input a valid number!");
-                    PopOperation(thisOperation);
+                    _pendingOperations.Remove(thisOperation);
                     return;
                 }
                 catch (OverflowException)
                 {
                     System.Windows.MessageBox.Show("Please insert a value smaller than " + ulong.MaxValue);
-                    PopOperation(thisOperation);
+                    _pendingOperations.Remove(thisOperation);
                     return;
                 }
             }
@@ -442,7 +466,7 @@ namespace BurnManagerFront
 
             lock (LockObj)
             {
-                PopOperation(thisOperation);
+                _pendingOperations.Remove(thisOperation);
             }
         }
 
@@ -463,14 +487,14 @@ namespace BurnManagerFront
         {
             lock (LockObj)
             {
-                PendingOperation? thisOperation = PushOperation(true, "Staging Burn");
-                if (thisOperation == null) return;
+                PendingOperation thisOperation = new PendingOperation(true, "Staging Burn");
+                if (!_pendingOperations.Add(thisOperation)) return;
 
                 VolumeProps? volumeToStage = (VolumeProps)burnListBox.SelectedItem;
                 if (volumeToStage == null)
                 {
                     System.Windows.MessageBox.Show("Please select a burn to stage.");
-                    PopOperation(thisOperation);
+                    _pendingOperations.Remove(thisOperation);
                     return;
                 }
 
@@ -478,14 +502,24 @@ namespace BurnManagerFront
                 if (!Directory.Exists(stagingPath))
                 {
                     System.Windows.MessageBox.Show("Please input a valid staging directory.");
-                    PopOperation(thisOperation);
+                    _pendingOperations.Remove(thisOperation);
                     return;
                 }
 
                 ResultCode result = 
                     BurnManagerAPI.StageVolumeProps(volumeToStage, stagingPath, false, api.PlatformSpecificDirectorySeparator);
 
-                PopOperation(thisOperation);
+                _pendingOperations.Remove(thisOperation);
+            }
+        }
+
+        public void UpdateStatusIndicator(string status)
+        {
+            lock (LockObj)
+            {
+                Dispatcher.Invoke(() => { 
+                    statusOutputLabel.Content = "Status: " + status;
+                });
             }
         }
     }
