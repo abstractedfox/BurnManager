@@ -53,14 +53,6 @@ namespace BurnManagerFront
             _pendingOperations = new PendingOperationsWPF(this);
 
             _initializeUI();
-            _pendingOperations.OnEmptyListCallback = () =>
-            {
-                lock (LockObj)
-                {
-                    UpdateStatusIndicator("Ready");
-                    Console.WriteLine("boilerplate");
-                }
-            };
         }
 
         private void _initializeUI()
@@ -129,7 +121,6 @@ namespace BurnManagerFront
             IReadOnlyList<StorageFile> files = await FrontendFunctions.OpenFilePicker(this);
 
             await FrontendFunctions.AddStorageFiles(files, onComplete, api);
-            Console.WriteLine("boilerplate!");
         }
 
         private async void AddFolder_ButtonClick(object sender, RoutedEventArgs e)
@@ -229,12 +220,13 @@ namespace BurnManagerFront
         {
             lock (LockObj)
             {
-                foreach(var operation in _pendingOperationsOld)
+                if (CancelOperationButton.IsEnabled)
                 {
-                    if (!(operation.ProcedureInstance is null))
-                    {
-                        operation.ProcedureInstance.EndImmediately();
-                    }
+                    CancelOperationButton.IsEnabled = false;
+                }
+                else
+                {
+                    CancelOperationButton.IsEnabled = true;
                 }
             }
         }
@@ -520,6 +512,29 @@ namespace BurnManagerFront
                 Dispatcher.Invoke(() => { 
                     statusOutputLabel.Content = "Status: " + status;
                 });
+            }
+        }
+
+        private void CancelOperation_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            _pendingOperations.Cancel();
+        }
+
+        private void AddMissingChecksums_ButtonClick(object sender, RoutedEventArgs e)
+        {
+            PendingOperation checksumOperation = new PendingOperation(true);
+            checksumOperation.ProcedureInstance = BurnManagerAPI.FillMissingChecksums(api.Data.AllFiles);
+
+            checksumOperation.ProcedureInstance.callOnCompletionDelegate = () =>
+            {
+                _pendingOperations.Remove(checksumOperation);
+            };
+
+            bool boilerplate = _pendingOperations.Add(checksumOperation);
+
+            if (!boilerplate)
+            {
+                return;
             }
         }
     }

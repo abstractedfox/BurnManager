@@ -80,10 +80,6 @@ namespace BurnManager
             {
                 lock (_lockObj)
                 {
-                    if (!(!_halt && (_shouldAlwaysRun || batches.Count > 0)))
-                    {
-                        Console.WriteLine("boilerplate!");
-                    }
                     return !_halt && (_shouldAlwaysRun || batches.Count > 0);
                 }
             };

@@ -269,10 +269,33 @@ namespace BurnManager
 
         //===================Data operations
 
-        //Perform all verifications on the list of passed files
-        public static void VerifyFiles(FileList files)
+        public static ChecksumFactory FillMissingChecksums(ICollection<FileProps> files)
         {
+            ChecksumFactory checksumFactory = new ChecksumFactory();
+            List<FileProps> batch = new List<FileProps>();
+            const int batchSize = 50;
 
+            checksumFactory.StartOperation();
+
+            foreach (var file in files)
+            {
+                lock (file.LockObj)
+                {
+                    if (file.Checksum == null || file.Checksum.Count() == 0)
+                    {
+                        batch.Add(file);
+                        if (batch.Count() == batchSize)
+                        {
+                            checksumFactory.AddBatch(batch);
+                            batch = new List<FileProps>();
+                        }
+                    }
+                }
+            }
+
+            checksumFactory.EndWhenComplete();
+            return checksumFactory;
+            
         }
 
         //Verify the existing checksum of a list of files one-by-one. Mostly for making sure there were no sync problems
@@ -311,11 +334,6 @@ namespace BurnManager
         public static bool FileExists(FileProps file)
         {
             return file.OriginalPath == null || File.Exists(file.OriginalPath);
-        }
-        //Verify the integrity of file and volume relationships, and check for discrepancies
-        public static void VerifyDataIntegrity(FileAndDiscData data)
-        {
-
         }
 
         public static ResultCode StageVolumeProps(VolumeProps volume, string path, bool skipLogFile, char platformSpecificDirectorySeparator)
