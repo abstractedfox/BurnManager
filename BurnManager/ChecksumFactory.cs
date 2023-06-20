@@ -10,6 +10,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace BurnManager
 {
@@ -87,6 +88,7 @@ namespace BurnManager
             await Task.Run(async () => { 
                 while (loopCondition())
                 {
+                    Debug.WriteLine("loopy!" + DateTime.Now);
                     List<FileProps> thisBatch = new List<FileProps>();
 
                     //Do not block AddBatch by remaining locked while a batch is processing

@@ -522,20 +522,31 @@ namespace BurnManagerFront
 
         private void AddMissingChecksums_ButtonClick(object sender, RoutedEventArgs e)
         {
-            PendingOperation checksumOperation = new PendingOperation(true);
-            checksumOperation.ProcedureInstance = BurnManagerAPI.FillMissingChecksums(api.Data.AllFiles);
-
-            checksumOperation.ProcedureInstance.callOnCompletionDelegate = () =>
+            lock (LockObj)
             {
-                _pendingOperations.Remove(checksumOperation);
-            };
+                PendingOperation checksumOperation = new PendingOperation(true);
+                checksumOperation.ProcedureInstance = BurnManagerAPI.FillMissingChecksums(api.Data.AllFiles);
 
-            bool boilerplate = _pendingOperations.Add(checksumOperation);
+                checksumOperation.ProcedureInstance.callOnCompletionDelegate = () =>
+                {
+                    lock (LockObj)
+                    {
+                        _pendingOperations.Remove(checksumOperation);
+                    }
+                };
 
-            if (!boilerplate)
-            {
-                return;
+                bool addOperationSucceeded = _pendingOperations.Add(checksumOperation);
+
+                if (!addOperationSucceeded)
+                {
+                    //checksumOperation.ProcedureInstance = null; //The operation was never added, so it can't be removed
+                    return;
+                }
+
+                checksumOperation.ProcedureInstance.StartOperation();
+                checksumOperation.ProcedureInstance.EndWhenComplete();
             }
+
         }
     }
 

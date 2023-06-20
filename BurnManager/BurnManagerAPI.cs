@@ -275,7 +275,7 @@ namespace BurnManager
             List<FileProps> batch = new List<FileProps>();
             const int batchSize = 50;
 
-            checksumFactory.StartOperation();
+            //checksumFactory.StartOperation();
 
             foreach (var file in files)
             {
@@ -293,7 +293,7 @@ namespace BurnManager
                 }
             }
 
-            checksumFactory.EndWhenComplete();
+            //checksumFactory.EndWhenComplete();
             return checksumFactory;
             
         }
