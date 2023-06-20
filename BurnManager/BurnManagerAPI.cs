@@ -52,20 +52,18 @@ namespace BurnManager
         public ResultCode LoadFromJson(string serializedJson)
         {
             ResultCode operationResult = 0;
-            //await Task.Run(() => { 
-                ObservableFileAndDiscData newData = new ObservableFileAndDiscData(JsonToFileAndDiscData(serializedJson, ref operationResult));
-                if (operationResult == ResultCode.SUCCESSFUL)
+            ObservableFileAndDiscData newData = new ObservableFileAndDiscData(JsonToFileAndDiscData(serializedJson, ref operationResult));
+            if (operationResult == ResultCode.SUCCESSFUL)
+            {
+                lock (LockObj)
                 {
-                    lock (LockObj)
-                    {
-                        Data = newData;
-                        Data.PopulateVolumes();
-                        _lastSavedState = new ObservableFileAndDiscData(Data);
-                    }
-                    operationResult = ResultCode.SUCCESSFUL;
+                    Data = newData;
+                    Data.PopulateVolumes();
+                    _lastSavedState = new ObservableFileAndDiscData(Data);
                 }
-                else operationResult = ResultCode.UNSUCCESSFUL;
-            //});
+                operationResult = ResultCode.SUCCESSFUL;
+            }
+            else operationResult = ResultCode.UNSUCCESSFUL;
             return operationResult;
         }
 
@@ -136,7 +134,6 @@ namespace BurnManager
         {
             lock (LockObj)
             {
-                //Debug.WriteLine("boilerplate" + data.AllFiles.TotalSizeInBytes);
                 Data.AllFiles.Add(file);
             }
             return ResultCode.SUCCESSFUL;
@@ -171,7 +168,6 @@ namespace BurnManager
                     Data.AllVolumes.Clear();
 
                     foreach (var item in sorted) Data.AllVolumes.Add(item);
-
                 }
             });
 
@@ -231,48 +227,34 @@ namespace BurnManager
             });
         }
 
-        public static async Task GenerateChecksums(ICollection<Tuple<FileProps, byte[]>> files, bool overwriteExistingChecksum, ICollection<FileProps> errorOutput)
-        {
-            object _lockObj = new object();
-            await Task.Run(() => {
-                ParallelLoopResult result = Parallel.ForEach(files, 
-                    //new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount - 1},
-                    file => {
-                        using (MD5 hashtime = MD5.Create())
-                        {
-                            lock (file.Item1.LockObj)
-                            {
-                                if (!overwriteExistingChecksum && file.Item1.HasChecksum) return;
-                                if (!FileExists(file.Item1))
-                                {
-                                    lock (_lockObj)
-                                    {
-                                        file.Item1.Status = FileStatus.FILE_MISSING;
-                                        errorOutput.Add(file.Item1);
-                                        return;
-                                    }
-                                }
-                                try
-                                {
-                                    file.Item1.Checksum = hashtime.ComputeHash(file.Item2);
-                                }
-                                catch (UnauthorizedAccessException)
-                                {
-                                    AccessError(file.Item1);
-                                }
-                            }
-                        }
-                });
-            });
-        }
-
-
         //===================Data operations
 
-        //Perform all verifications on the list of passed files
-        public static void VerifyFiles(FileList files)
+        //Checks the provided collection for missing checksums and returns a new ChecksumFactory instance to fill them.
+        //ChecksumFactory loop is not started in this function, it should be started and ended by the caller
+        public static ChecksumFactory FillMissingChecksums(ICollection<FileProps> files)
         {
+            ChecksumFactory checksumFactory = new ChecksumFactory();
+            List<FileProps> batch = new List<FileProps>();
+            const int batchSize = 50;
 
+            foreach (var file in files)
+            {
+                lock (file.LockObj)
+                {
+                    if (file.Checksum == null || file.Checksum.Count() == 0)
+                    {
+                        batch.Add(file);
+                        if (batch.Count() == batchSize)
+                        {
+                            checksumFactory.AddBatch(batch);
+                            batch = new List<FileProps>();
+                        }
+                    }
+                }
+            }
+
+            return checksumFactory;
+            
         }
 
         //Verify the existing checksum of a list of files one-by-one. Mostly for making sure there were no sync problems
@@ -304,18 +286,9 @@ namespace BurnManager
             }
             return erroredFiles;
         }
-        public static void VerifyFilesExist(FileList files)
-        {
-
-        }
         public static bool FileExists(FileProps file)
         {
             return file.OriginalPath == null || File.Exists(file.OriginalPath);
-        }
-        //Verify the integrity of file and volume relationships, and check for discrepancies
-        public static void VerifyDataIntegrity(FileAndDiscData data)
-        {
-
         }
 
         public static ResultCode StageVolumeProps(VolumeProps volume, string path, bool skipLogFile, char platformSpecificDirectorySeparator)
@@ -338,6 +311,7 @@ namespace BurnManager
                 {
                     if (!skipLogFile)
                     {
+                        //helpful reminder: the sorting algorithm already made sure there is space for this!
                         File.WriteAllText(outputFilePath, file.FileName);
                     }
                     continue;

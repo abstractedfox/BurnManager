@@ -17,19 +17,19 @@ namespace BurnManager
             callOnCompletionDelegate = callback;
         }
 
-        public new void StartOperation()
+        public override void StartOperation()
         {
             base.StartOperation();
             _checksumProcedure.StartOperation();
             _checksumHandoffTask = _mainTask();
         }
 
-        public new void EndWhenComplete()
+        public override void EndWhenComplete()
         {
             base.EndWhenComplete();
         }
 
-        public new void EndImmediately()
+        public override void EndImmediately()
         {
             base.EndImmediately();
             _checksumProcedure.EndImmediately();

@@ -12,7 +12,7 @@ namespace BurnManager
 
         public bool IsComplete { get; }
 
-        //Start running the operationo
+        //Start running the operation
         public void StartOperation();
 
         //Indicate that the operation should finish whatever is in queue and exit.

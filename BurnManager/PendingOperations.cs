@@ -38,6 +38,8 @@ namespace BurnManager
             }
         }
 
+        private bool _raisedCancelEvent = false; //Set to true if this operation is told to cancel, to prevent redundant cancels
+
         public bool Add(PendingOperation item)
         {
             lock (_lockObj)
@@ -56,18 +58,29 @@ namespace BurnManager
             }
         }
 
-        public void Clear()
+        public void Cancel()
         {
             lock (_lockObj)
             {
+                if (_raisedCancelEvent)
+                {
+                    return;
+                }
+                _raisedCancelEvent = true;
+
                 foreach (var operation in _pendingOperations)
                 {
+                    if (!(operation.ProcedureInstance is null))
+                    {
+                        operation.ProcedureInstance.EndImmediately();
+                    }
+
                     if (!(operation.OnRemoveOperationCallback is null))
                     {
                         operation.OnRemoveOperationCallback();
                     }
                 }
-                _pendingOperations.Clear();
+                _raisedCancelEvent = false;
             }
         }
 

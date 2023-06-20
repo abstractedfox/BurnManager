@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Threading;
 
 namespace BurnManagerFront
 {
@@ -13,6 +14,15 @@ namespace BurnManagerFront
         public PendingOperationsWPF(MainWindow window)
         {
             _mainWindowInstance = window;
+
+            this.OnEmptyListCallback = () =>
+            {
+                _mainWindowInstance.UpdateStatusIndicator("Ready");
+
+                _mainWindowInstance.Dispatcher.Invoke(() => { 
+                    _mainWindowInstance.CancelOperationButton.IsEnabled = false;
+                });
+            };
         }
 
         public new bool Add(BurnManager.PendingOperation operation)
@@ -31,6 +41,13 @@ namespace BurnManagerFront
             else
             {
                 _mainWindowInstance.UpdateStatusIndicator("Unnamed Operation");
+            }
+
+            if (operation.CanCancel)
+            {
+                _mainWindowInstance.Dispatcher.Invoke(() => { 
+                    _mainWindowInstance.CancelOperationButton.IsEnabled = true;
+                });
             }
 
             return result;

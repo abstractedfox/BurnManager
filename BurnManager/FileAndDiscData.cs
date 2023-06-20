@@ -50,30 +50,6 @@ namespace BurnManager
             _allVolumes.Clear();
         }
 
-
-        //Populate the DiscAndBurnStatus struct in each FileProps that is in _allVolumes
-        //Unused, deletion candidate
-        public void PopulateFileAndDiscRelationships()
-        {
-            //await Task.Run(() =>
-            //{
-                lock (LockObj)
-                {
-                    foreach (var volume in _allVolumes)
-                    {
-                        foreach (var file in volume.Files)
-                        {
-                            lock (file.LockObj)
-                            {
-                                file.RelatedVolumes.Clear();
-                                file.RelatedVolumes.Add(new DiscAndBurnStatus { IsBurned = false, VolumeID = volume.Identifier });
-                            }
-                        }
-                    }
-                }
-            //});
-        }
-
         //Generate all VolumeProps referenced by the RelatedVolumes struct of each file
         //Because the json serializer doesn't preserve C# references, this must be run after deserialization to rebuild volumes
         public void PopulateVolumes()
@@ -87,28 +63,30 @@ namespace BurnManager
                 return false;
             };
 
-            //await Task.Run(() => {
-                lock (LockObj)
+            lock (LockObj)
+            {
+                foreach (var file in AllFiles)
                 {
-                    foreach (var file in AllFiles)
+                    if (file.RelatedVolumes is null)
                     {
-                        foreach (var relationship in file.RelatedVolumes)
+                        continue;
+                    }
+                    foreach (var relationship in file.RelatedVolumes)
+                    {
+                        List<VolumeProps> volume = VolumeProps.GetVolumePropsByID(AllVolumes, relationship.VolumeID);
+                        if (volume.Count > 1)
                         {
-                            List<VolumeProps> volume = VolumeProps.GetVolumePropsByID(AllVolumes, relationship.VolumeID);
-                            if (volume.Count > 1)
-                            {
-                                throw new InvalidDataException("Multiple volumes found with the same ID.");
-                            }
-                            if (volume.Count < 1)
-                            {
-                                throw new InvalidDataException("No volumes found with the ID " + relationship.VolumeID);
-                            }
-
-                            volume.First().Add(file, true);
+                            throw new InvalidDataException("Multiple volumes found with the same ID.");
                         }
+                        if (volume.Count < 1)
+                        {
+                            throw new InvalidDataException("No volumes found with the ID " + relationship.VolumeID);
+                        }
+
+                        volume.First().Add(file, true);
                     }
                 }
-            //});
+            }
         }
 
         public static bool operator ==(FileAndDiscData? a, FileAndDiscData? b)

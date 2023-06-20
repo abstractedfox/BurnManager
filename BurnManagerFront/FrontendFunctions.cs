@@ -74,8 +74,6 @@ namespace BurnManagerFront
             {
                 FileProps filePropped = new FileProps(await FrontendFunctions.StorageFileToFileProps(file));
 
-                //note: Dispatcher.InvokeAsync is necessary because ObservableCollection cannot be modified by 
-                //threads other than the one that created it
                 api.AddFile(filePropped);
 
                 filesToChecksum.Add(filePropped);

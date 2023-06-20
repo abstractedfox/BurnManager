@@ -12,6 +12,7 @@ namespace BurnManager
     public class PendingOperation{
         public object LockObj = new object();
         private bool _blocking = false;
+        public bool CanCancel = true;
         public string? Name;
         public Action? OnAddOperationCallback = null;
         public Action? OnRemoveOperationCallback = null;

@@ -52,7 +52,7 @@ namespace BurnManager
             _api = api;
         }
 
-        public void StartOperation()
+        public virtual void StartOperation()
         {
             lock (_lockObj)
             {
@@ -62,7 +62,7 @@ namespace BurnManager
             }
         }
 
-        public void AddFolderToQueue(DirectoryInfo folder)
+        public virtual void AddFolderToQueue(DirectoryInfo folder)
         {
             lock (_lockObj)
             {
@@ -80,7 +80,7 @@ namespace BurnManager
                 }
             };
 
-            await Task.Run(async () => {
+            await Task.Run(() => {
                 _isCurrentlyRunning = true;
                 while (loopCondition())
                 {
@@ -136,12 +136,12 @@ namespace BurnManager
             });
         }
 
-        public void EndWhenComplete()
+        public virtual void EndWhenComplete()
         {
             _shouldAlwaysRun = false;
         }
 
-        public void EndImmediately()
+        public virtual void EndImmediately()
         {
             _halt = true;
             _shouldAlwaysRun = false;
