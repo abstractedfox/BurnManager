@@ -64,8 +64,17 @@ namespace BurnManager
             return true;
         }
 
-        public static bool CompareByteArrays(byte[] arrayA, byte[]arrayB)
+        public static bool CompareByteArrays(byte[]? arrayA, byte[]? arrayB)
         {
+            if (arrayA is null && arrayB is null)
+            {
+                return true;
+            }
+            if (arrayA is null ^ arrayB is null)
+            {
+                return false;
+            }
+
             if (arrayA.Length != arrayB.Length) return false;
             for (int i = 0; i < arrayA.Length; i++)
             {

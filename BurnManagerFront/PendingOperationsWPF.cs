@@ -45,7 +45,9 @@ namespace BurnManagerFront
 
             if (operation.CanCancel)
             {
-                _mainWindowInstance.CancelOperationButton.IsEnabled = true;
+                _mainWindowInstance.Dispatcher.Invoke(() => { 
+                    _mainWindowInstance.CancelOperationButton.IsEnabled = true;
+                });
             }
 
             return result;

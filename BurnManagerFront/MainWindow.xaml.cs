@@ -39,10 +39,6 @@ namespace BurnManagerFront
         public BurnManagerAPI api;
         public object LockObj = new object();
 
-        //note: This is only a container; each long-running operation is responsible for its own PendingOperation, describing
-        //whether that operation should block other long-running operations, and removing its PendingOperation
-        //when completed
-        private List<PendingOperation> _pendingOperationsOld = new List<PendingOperation>();
         private string _statusIndicatorUI = "Status: Uninitialized";
         private PendingOperationsWPF _pendingOperations;
 
@@ -231,36 +227,6 @@ namespace BurnManagerFront
             }
         }
 
-        //Push a new operation to _pendingOperations after checking whether a new operation can be added.
-        //If it can't add a new operation, it returns null.
-        /*
-        public PendingOperation? PushOperation(bool isBlocking, string name)
-        {
-            lock (LockObj)
-            {
-                if (_pendingOperationsOld.Count > 0 && _pendingOperationsOld.Where(operation => operation.Blocking == true).Any())
-                {
-                    FrontendFunctions.OperationsInProgressDialog(_pendingOperationsOld);
-                    return null;
-                }
-                PendingOperation operation = new PendingOperation(isBlocking, name);
-                _pendingOperationsOld.Add(operation);
-                return operation;
-            }
-        }
-
-        public void PopOperation(PendingOperation operation)
-        {
-            lock (LockObj)
-            {
-                if (!_pendingOperationsOld.Remove(operation))
-                {
-                    throw new Exception("Running operation was not registered in _operationsPending");
-                }
-            }
-        }*/
-        
-
         private MessageBoxResult _saveChangesDialog()
         {
             MessageBoxResult result = System.Windows.MessageBox.Show(
@@ -331,8 +297,6 @@ namespace BurnManagerFront
             return output;
         }
 
-
-
         private void FileNew_MenuClick(object sender, RoutedEventArgs e)
         {
             lock (LockObj)
@@ -385,7 +349,12 @@ namespace BurnManagerFront
                 lock (LockObj)
                 {
                     PendingOperation thisOperation = new PendingOperation(true, "File Open");
-                    if (!_pendingOperations.Add(thisOperation)) return;
+                    bool addSucceeded = _pendingOperations.Add(thisOperation);
+
+                    if (!addSucceeded)
+                    {
+                        return;
+                    }
 
                     if (api.SavedStateAltered)
                     {
@@ -539,7 +508,6 @@ namespace BurnManagerFront
 
                 if (!addOperationSucceeded)
                 {
-                    //checksumOperation.ProcedureInstance = null; //The operation was never added, so it can't be removed
                     return;
                 }
 
@@ -549,7 +517,6 @@ namespace BurnManagerFront
 
         }
     }
-
 
     public class UICallback
     {

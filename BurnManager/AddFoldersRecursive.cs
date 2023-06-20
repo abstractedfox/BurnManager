@@ -80,7 +80,7 @@ namespace BurnManager
                 }
             };
 
-            await Task.Run(async () => {
+            await Task.Run(() => {
                 _isCurrentlyRunning = true;
                 while (loopCondition())
                 {
